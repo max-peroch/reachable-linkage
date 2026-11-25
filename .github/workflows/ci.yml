@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: sbt test (JDK ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest JDK the tests run on (they are compiled for 17; the core itself runs on 8) and the newest the class-file reader accepts.
+        java: [17, 25]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      # The suites share heavy global state and run in one JVM (see .jvmopts for the heap).
+      - name: Test
+        run: sbt -Dsbt.supershell=false core/test

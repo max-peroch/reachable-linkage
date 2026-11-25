@@ -1,0 +1,15 @@
+reachable-linkage
+Copyright the reachable-linkage authors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project studied, and is tested against, these Apache 2.0 projects. None of their code is copied or adapted:
+
+  spotify/missinglink                          https://github.com/spotify/missinglink
+  twitter-incubator/classpath-verifier         https://github.com/twitter-incubator/classpath-verifier
+  scalacenter/sbt-missinglink                  https://github.com/scalacenter/sbt-missinglink
+
+missinglink-core is a test-only dependency (a parity oracle) and is not distributed with this project. The only runtime
+dependency is ASM (BSD 3-Clause, https://asm.ow2.io).
+
+If a file is ever adapted from one of these projects, add its entry here with the original copyright notice.
