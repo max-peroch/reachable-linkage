@@ -25,7 +25,7 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Check formatting
         if: matrix.java == 17
-        run: sbt -Dsbt.supershell=false scalafmtSbtCheck scalafmtCheckAll
+        run: sbt -Dsbt.supershell=false "scalafmtSbtCheck;scalafmtCheckAll"
       # The suites share heavy global state and run in one JVM (see .jvmopts for the heap).
       - name: Test
         run: sbt -Dsbt.supershell=false core/test
@@ -42,7 +42,7 @@ jobs:
       # sbt and the tests run on 17 (the default, set last); the checker runs on the older Java in a child JVM.
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: zulu
           java-version: |
             ${{ matrix.java }}
             17

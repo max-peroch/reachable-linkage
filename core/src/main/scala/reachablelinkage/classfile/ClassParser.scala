@@ -18,8 +18,8 @@ private[reachablelinkage] object ClassParser:
     */
   val Version: Int = 17
 
-  /** Highest class file major version we accept (Java 25). */
-  val MaxMajor: Int = 69
+  /** Highest class file major version we accept: the newest one ASM reads (Java 28). */
+  val MaxMajor: Int = Opcodes.V28
 
   def parse(bytes: Array[Byte], syms: Symbols, detail: ParseDetail = ParseDetail.Lean): Either[ClassFileError, ClassInfo] =
     // Check the version first: ASM's ClassReader constructor throws on versions it does not know.
