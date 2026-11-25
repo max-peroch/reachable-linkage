@@ -64,7 +64,7 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
 - `sbt core/test` is the suite (CI runs it on JDK 17 and 25). Suites that use missinglink-core as an oracle extend `OracleSuite` (5-minute timeout; its first use builds a JDK model, about 12 s and 2 GB).
 - On demand, never in `sbt test` (test sources, plain `main`): `reachablelinkage.bench.Bench` (`app`, `ours`, `ml`), `Profile`, `LoopBench`, and in `linkage`: `Soundness`, `BlindSpots`. Real classpaths
   (Play, pekko-http, http4s, armeria, Spring Boot, sbt) are resolved offline into a scratch sbt project and passed as a file with one jar per line.
-- `tools/coverage-agent/build.sh` builds a small java agent (ASM; jar gitignored) that records the methods that ran. It is a dev tool, not shipped.
+- `tools/coverage-agent/build.sh` builds a small java agent (ASM; jar gitignored) that records the methods that ran; `Soundness` then checks that the call graph reaches them (worked example in its README). It is a dev tool, not shipped.
 - `sbt core/publishLocal` publishes `reachable-linkage-core_3` to `~/.ivy2/local`, where the plugin fetches it.
 
 ## The sbt plugin

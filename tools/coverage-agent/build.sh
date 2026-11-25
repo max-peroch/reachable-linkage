@@ -2,8 +2,13 @@
 # Builds coverage-agent.jar (the agent and ASM, which it needs) next to this script. Reads only the sources and the ASM jar; writes the jar and a temp dir.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
-ASM=${ASM_JAR:-$HOME/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/ow2/asm/asm/9.8/asm-9.8.jar}
-[ -f "$ASM" ] || { echo "ASM jar not found: $ASM (set ASM_JAR)" >&2; exit 1; }
+# The ASM jar: $ASM_JAR, or the Coursier cache on macOS or Linux.
+ASM=${ASM_JAR:-}
+for candidate in "$HOME/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/ow2/asm/asm/9.8/asm-9.8.jar" \
+                 "$HOME/.cache/coursier/v1/https/repo1.maven.org/maven2/org/ow2/asm/asm/9.8/asm-9.8.jar"; do
+  [ -n "$ASM" ] || { [ -f "$candidate" ] && ASM=$candidate; }
+done
+[ -f "$ASM" ] || { echo "ASM jar not found: set ASM_JAR to an asm-9.x jar" >&2; exit 1; }
 WORK=$(mktemp -d)
 mkdir "$WORK/classes"
 javac --release 17 -nowarn -cp "$ASM" -d "$WORK/classes" "$HERE"/rl/*.java
