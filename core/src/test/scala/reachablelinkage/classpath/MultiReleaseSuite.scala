@@ -11,27 +11,29 @@ import reachablelinkage.fixture.JavaFixture.compile
 import reachablelinkage.fixture.RuntimeOracle
 import reachablelinkage.symbols.Symbols
 
-/**
- * A multi-release jar holds a class once for each Java release that needs a different version of it, and a JVM
- * uses the one for its own release. The check must see the classes the application will actually load.
- */
+/** A multi-release jar holds a class once for each Java release that needs a different version of it, and a JVM uses the one for its own release. The check
+  * must see the classes the application will actually load.
+  */
 class MultiReleaseSuite extends munit.FunSuite:
 
   private def util(body: String): Path = compile(Map("lib/Util.java" -> s"package lib; public class Util { $body }"))
-  private val extra = compile(Map("lib/Extra.java" -> "package lib; public class Extra { }"))
+  private val extra                    = compile(Map("lib/Extra.java" -> "package lib; public class Extra { }"))
 
   /** A jar of the classes under `base` and, for each release, under `META-INF/versions/<release>/`. */
   private def jar(base: Path, versions: Map[Int, Path], multiRelease: String = "true"): Path =
-    val file = Files.createTempFile("mr", ".jar")
+    val file     = Files.createTempFile("mr", ".jar")
     val manifest = new Manifest()
     manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
     if multiRelease.nonEmpty then manifest.getMainAttributes.putValue("Multi-Release", multiRelease)
-    val out = new JarOutputStream(new FileOutputStream(file.toFile), manifest)
+    val out                                   = new JarOutputStream(new FileOutputStream(file.toFile), manifest)
     def add(root: Path, prefix: String): Unit =
       val s = Files.walk(root)
-      try s.iterator.asScala.filter(Files.isRegularFile(_)).foreach: p =>
-        out.putNextEntry(new JarEntry(prefix + root.relativize(p).toString.replace('\\', '/')))
-        out.write(Files.readAllBytes(p)); out.closeEntry()
+      try
+        s.iterator.asScala
+          .filter(Files.isRegularFile(_))
+          .foreach: p =>
+            out.putNextEntry(new JarEntry(prefix + root.relativize(p).toString.replace('\\', '/')))
+            out.write(Files.readAllBytes(p)); out.closeEntry()
       finally s.close()
     try { add(base, ""); versions.toList.sortBy(_._1).foreach((r, dir) => add(dir, s"META-INF/versions/$r/")) }
     finally out.close()
@@ -39,9 +41,16 @@ class MultiReleaseSuite extends munit.FunSuite:
 
   private def methods(source: ClassSource, name: String): List[String] =
     val syms = new Symbols
-    source.read(name).toList.flatMap: bytes =>
-      ClassParser.parse(bytes, syms).toOption.toList.flatMap(_.methods.toList.map(m => syms.name(m.name)))
-        .filterNot(_ == "<init>")
+    source
+      .read(name)
+      .toList
+      .flatMap: bytes =>
+        ClassParser
+          .parse(bytes, syms)
+          .toOption
+          .toList
+          .flatMap(_.methods.toList.map(m => syms.name(m.name)))
+          .filterNot(_ == "<init>")
 
   private def open(file: Path, release: Int, cache: Option[Path] = None): ClassSource =
     ClassSource.open(file, cache, release).fold(e => fail(e.message), identity)
@@ -92,15 +101,19 @@ class MultiReleaseSuite extends munit.FunSuite:
   }
 
   test("a summary is made per release, so a cache shared by two releases never mixes them") {
-    val mr    = jar(base, Map(17 -> v17))
-    val cache = Files.createTempDirectory("summaries")
+    val mr           = jar(base, Map(17 -> v17))
+    val cache        = Files.createTempDirectory("summaries")
     val fingerprints = List(8, 17).map(r => open(mr, r, Some(cache)).fingerprint)
     assertNotEquals(fingerprints.head, fingerprints.last)
-    for release <- List(8, 17, 8, 17) do   // twice each: a cold build, then a read of the saved summary
-      val s     = open(mr, release, Some(cache))
-      val syms  = new Symbols
-      val info  = s.summarized("lib/Util", syms).nn
-      assertEquals(info.methods.toList.map(m => syms.name(m.name)).filterNot(_ == "<init>"), List(if release == 8 then "old" else "seventeen"), s"release $release")
+    for release <- List(8, 17, 8, 17) do // twice each: a cold build, then a read of the saved summary
+      val s    = open(mr, release, Some(cache))
+      val syms = new Symbols
+      val info = s.summarized("lib/Util", syms).nn
+      assertEquals(
+        info.methods.toList.map(m => syms.name(m.name)).filterNot(_ == "<init>"),
+        List(if release == 8 then "old" else "seventeen"),
+        s"release $release"
+      )
     assertEquals(Files.list(cache).count, 2L, "one summary per release")
   }
 
@@ -112,11 +125,17 @@ class MultiReleaseSuite extends munit.FunSuite:
   // ---- through the facade, on the JVM ----
 
   test("the check sees what the JVM will load: a method gone from the version for this release is a conflict, and not for an older one") {
-    val mr  = jar(base, Map(17 -> v17))
-    val app = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { lib.Util.old(); } }"), Seq(base))
+    val mr                  = jar(base, Map(17 -> v17))
+    val app                 = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { lib.Util.old(); } }"), Seq(base))
     def check(release: Int) =
-      Linkage.check(LinkageRequest.builder().withProjectClasses(java.util.List.of(app))
-        .withClasspath(java.util.List.of(ClasspathEntry("mr.jar", mr))).withJavaRelease(release).build())
+      Linkage.check(
+        LinkageRequest
+          .builder()
+          .withProjectClasses(java.util.List.of(app))
+          .withClasspath(java.util.List.of(ClasspathEntry("mr.jar", mr)))
+          .withJavaRelease(release)
+          .build()
+      )
     val newer = check(17)
     assertEquals(newer.conflicts.asScala.map(c => (c.category, c.label)).toList, List((ConflictCategory.METHOD_SIGNATURE_NOT_FOUND, ConflictLabel.REACHABLE)))
     assertEquals(check(11).conflicts.size, 0, "on Java 11 the base class is used")
@@ -124,18 +143,18 @@ class MultiReleaseSuite extends munit.FunSuite:
     // The JVM this test runs on (Java 17 or later) really does fail, and the default release is its own.
     val error = RuntimeOracle.run(Seq(app, mr))
     assert(error.exists(_.isInstanceOf[NoSuchMethodError]), s"expected NoSuchMethodError, got $error")
-    val byDefault = Linkage.check(LinkageRequest.builder().withProjectClasses(java.util.List.of(app)).withClasspath(java.util.List.of(ClasspathEntry("mr.jar", mr))).build())
+    val byDefault =
+      Linkage.check(LinkageRequest.builder().withProjectClasses(java.util.List.of(app)).withClasspath(java.util.List.of(ClasspathEntry("mr.jar", mr))).build())
     assertEquals(byDefault.conflicts.size, 1, "the default is the running JDK's release")
   }
 
   // ---- service files are not versioned ----
 
   test("a service file under META-INF/versions is ignored, by the JVM's ServiceLoader and by us: only the base file counts") {
-    val classes = compile(Map(
-      "svc/Svc.java"  -> "package svc; public interface Svc { }",
-      "svc/Impl.java" -> "package svc; public class Impl implements Svc { }"))
+    val classes =
+      compile(Map("svc/Svc.java" -> "package svc; public interface Svc { }", "svc/Impl.java" -> "package svc; public class Impl implements Svc { }"))
     def jarWith(services: Map[String, String]): Path =
-      val file = Files.createTempFile("svc", ".jar")
+      val file     = Files.createTempFile("svc", ".jar")
       val manifest = new Manifest()
       manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
       manifest.getMainAttributes.putValue("Multi-Release", "true")
@@ -149,14 +168,15 @@ class MultiReleaseSuite extends munit.FunSuite:
       file
     def providersTheJvmFinds(jar: Path): Int =
       val loader = new java.net.URLClassLoader(Array(jar.toUri.toURL), ClassLoader.getPlatformClassLoader)
-      try java.util.ServiceLoader.load(loader.loadClass("svc.Svc"), loader).iterator.asScala.size finally loader.close()
+      try java.util.ServiceLoader.load(loader.loadClass("svc.Svc"), loader).iterator.asScala.size
+      finally loader.close()
     def serviceFilesWeSee(jar: Path): List[String] =
       val source = ClassSource.open(jar).fold(e => fail(e.message), identity)
-      try source.serviceFiles.toList finally source.close()
+      try source.serviceFiles.toList
+      finally source.close()
 
     val base      = jarWith(Map("META-INF/services/svc.Svc" -> "svc.Impl\n"))
     val versioned = jarWith(Map(s"META-INF/versions/${Runtime.version.feature}/META-INF/services/svc.Svc" -> "svc.Impl\n"))
     assertEquals((providersTheJvmFinds(base), serviceFilesWeSee(base)), (1, List("META-INF/services/svc.Svc")))
     assertEquals((providersTheJvmFinds(versioned), serviceFilesWeSee(versioned)), (0, Nil))
   }
-

@@ -13,4 +13,3 @@ private[reachablelinkage] object ReflectionCalls:
     (owner == "java/lang/Class" && name == "forName") ||
       (owner == "java/lang/ClassLoader" && name == "loadClass") ||
       (owner == "java/lang/invoke/MethodHandles$Lookup" && name == "findClass")
-

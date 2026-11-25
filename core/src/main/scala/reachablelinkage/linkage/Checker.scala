@@ -21,27 +21,31 @@ object Checker:
   def findings(index: ClassIndex, scope: Scope, precision: Precision): Vector[Finding] =
     findings(index, scope, CheckOptions(precision))
 
-  /**
-   * One finding per offending reference, so a report can say where each one is. The set of
-   * conflicts does not depend on `precision`; the label says how likely each one is to be hit.
-   */
+  /** One finding per offending reference, so a report can say where each one is. The set of conflicts does not depend on `precision`; the label says how likely
+    * each one is to be hit.
+    */
   def findings(index: ClassIndex, scope: Scope, options: CheckOptions = CheckOptions()): Vector[Finding] =
     val CheckOptions(precision, keep, loaded, _) = options
-    val traversable = new BitSet()
+    val traversable                              = new BitSet()
     scope.traverse.foreach(traversable.set(_))
     // Classes a real run loaded are used, whatever the analysis can see: they start the walks too.
-    val rules    = KeepRules.from(index.syms, keep)
+    val rules                       = KeepRules.from(index.syms, keep)
     val present: ClassId => Boolean = index.exists
-    val targets = new FrameworkTargets(index, rules, Generated.of(index, rules), traversable)
-    val loadedIds = loaded.iterator.map(index.syms.findClass).filterNot(_.isNone).filter(index.exists).toVector
+    val targets                     = new FrameworkTargets(index, rules, Generated.of(index, rules), traversable)
+    val loadedIds                   = loaded.iterator.map(index.syms.findClass).filterNot(_.isNone).filter(index.exists).toVector
     // Classes a configuration file names are loaded by the framework that reads it: roots too, like those a run loaded.
     val configured =
       if rules.namedFiles.isEmpty then Vector.empty
-      else NamedInResources.classes(index, rules.namedFiles, traversable).filter(c => index.get(c) match
-        case null => true
-        case info => rules.enabled(info, -1, present))
-    val used       = loadedIds ++ configured
-    val roots      = scope.roots.iterator.flatMap(index.classesIn).toVector ++ used
+      else
+        NamedInResources
+          .classes(index, rules.namedFiles, traversable)
+          .filter(c =>
+            index.get(c) match
+              case null => true
+              case info => rules.enabled(info, -1, present)
+          )
+    val used      = loadedIds ++ configured
+    val roots     = scope.roots.iterator.flatMap(index.classesIn).toVector ++ used
     val reachable = Reachability.classes(index, roots, traversable, targets)
     val resolver  = Resolver(index)
     val beans     = beanClasses(index, rules, reachable)
@@ -53,8 +57,10 @@ object Checker:
     val initName  = index.syms.nameId("<init>")
     val out       = ArrayBuffer.empty[Finding]
     scope.checked.foreach: s =>
-      index.classesIn(s).foreach: c =>
-        if reachable.get(c.value) then checkClass(index, resolver, access, impls, overrides, initName, reflected, beans, rules, c, out)
+      index
+        .classesIn(s)
+        .foreach: c =>
+          if reachable.get(c.value) then checkClass(index, resolver, access, impls, overrides, initName, reflected, beans, rules, c, out)
     checkProviders(index, scope, traversable, reachable, out)
     def graphWith(dispatch: Dispatch): MethodGraph =
       MethodGraph.build(index, resolver, rules, dispatch, scope.app.iterator.flatMap(index.classesIn).toVector, used, traversable, targets)
@@ -67,7 +73,7 @@ object Checker:
     // Unreached code breaks nothing, so Latent wins; then a handler (here or around every caller),
     // then a probe for the missing class; else the conflict stands.
     // Without a call graph an unimplemented abstract method can still be seen to be called by nobody: no checked class names it.
-    lazy val named = NamedMethods.of(index, reachable)
+    lazy val named                      = NamedMethods.of(index, reachable)
     def neverNamed(f: Finding): Boolean =
       graph.isEmpty && (f.conflict match
         case Conflict.AbstractMethodNotImplemented(_, declaring, name, desc) =>
@@ -82,18 +88,16 @@ object Checker:
       else
         f.conflict match
           case Conflict.MissingClass(missing, _) if probed.get(missing.value) => Label.Probed
-          case _ =>
+          case _                                                              =>
             graph.fold(Reach.Direct)(_.reach(index, f)) match
               case Reach.Direct          => Label.Reachable
               case Reach.Rule            => Label.Reflective
               case Reach.Deserialization => Label.Deserialized
     out.iterator.map(f => f.copy(label = labelOf(f))).toVector
 
-  /**
-   * A listed provider that is not on the classpath fails the moment its service is iterated, so it
-   * counts exactly when the service would have its providers started: the interface is reached, or
-   * is a JDK interface. Only service files of checked entries are looked at.
-   */
+  /** A listed provider that is not on the classpath fails the moment its service is iterated, so it counts exactly when the service would have its providers
+    * started: the interface is reached, or is a JDK interface. Only service files of checked entries are looked at.
+    */
   private def checkProviders(
       index: ClassIndex,
       scope: Scope,
@@ -105,8 +109,7 @@ object Checker:
     index.services.missing.foreach: m =>
       val loadable = reachable.get(m.service.value) ||
         (index.exists(m.service) && !traversable.get(index.sourceIndex(m.service)))
-      if checked.contains(m.entry) && loadable then
-        out += Finding(Conflict.MissingProvider(m.service, m.provider, m.entry), RefKind.Service, -1)
+      if checked.contains(m.entry) && loadable then out += Finding(Conflict.MissingProvider(m.service, m.provider, m.entry), RefKind.Service, -1)
 
   /** The reachable classes a framework reflects on: those a rule applies to, and those a class-value annotation names. */
   /** The classes some reached class hands to a call a `BeanArguments` or `BuiltArguments` rule names: a framework reads all their properties. */
@@ -125,7 +128,7 @@ object Checker:
     beans
 
   private def reflectedClasses(index: ClassIndex, rules: KeepRules, reachable: BitSet, present: ClassId => Boolean): BitSet =
-    val reflected = new BitSet()
+    val reflected                   = new BitSet()
     @tailrec def from(c: Int): Unit =
       if c >= 0 then
         index.get(ClassId(c)) match
@@ -137,15 +140,37 @@ object Checker:
     from(reachable.nextSetBit(0))
     reflected
 
-  private def checkClass(index: ClassIndex, r: Resolver, access: Access, impls: Implementations, overrides: Overrides, initName: NameId, reflected: BitSet, beans: BitSet, rules: KeepRules, id: ClassId, out: ArrayBuffer[Finding]): Unit =
+  private def checkClass(
+      index: ClassIndex,
+      r: Resolver,
+      access: Access,
+      impls: Implementations,
+      overrides: Overrides,
+      initName: NameId,
+      reflected: BitSet,
+      beans: BitSet,
+      rules: KeepRules,
+      id: ClassId,
+      out: ArrayBuffer[Finding]
+  ): Unit =
     index.get(id) match
       case null => out += Finding(Conflict.Unreadable(id, index.failure(id).getOrElse(ClassFileError.Unavailable)), RefKind.Hierarchy, -1)
       case info => new ClassChecker(index, r, access, impls, overrides, initName, reflected.get(id.value), beans.get(id.value), rules, id, info, out).run()
 
   /** The checks of one class: what it extends, then each type, method and field reference it makes. */
   private final class ClassChecker(
-      index: ClassIndex, r: Resolver, access: Access, impls: Implementations, overrides: Overrides,
-      initName: NameId, reflectedOn: Boolean, readsAllTypes: Boolean, rules: KeepRules, id: ClassId, info: ClassInfo, out: ArrayBuffer[Finding]
+      index: ClassIndex,
+      r: Resolver,
+      access: Access,
+      impls: Implementations,
+      overrides: Overrides,
+      initName: NameId,
+      reflectedOn: Boolean,
+      readsAllTypes: Boolean,
+      rules: KeepRules,
+      id: ClassId,
+      info: ClassInfo,
+      out: ArrayBuffer[Finding]
   ):
     def run(): Unit =
       checkHierarchy()
@@ -174,12 +199,14 @@ object Checker:
     /** Reflection over a class loads the types in every member's signature, so each must exist. */
     private def checkSignatures(): Unit =
       def missingIn(desc: DescId): List[ClassId] =
-        val t = Type.getType(index.syms.desc(desc))
+        val t     = Type.getType(index.syms.desc(desc))
         val types = if t.getSort == Type.METHOD then t.getReturnType :: t.getArgumentTypes.toList else List(t)
-        types.flatMap: x =>
-          val element = if x.getSort == Type.ARRAY then x.getElementType else x
-          if element.getSort == Type.OBJECT then List(index.syms.classId(element.getInternalName)) else Nil
-        .filterNot(index.exists).distinct
+        types
+          .flatMap: x =>
+            val element = if x.getSort == Type.ARRAY then x.getElementType else x
+            if element.getSort == Type.OBJECT then List(index.syms.classId(element.getInternalName)) else Nil
+          .filterNot(index.exists)
+          .distinct
       info.methods.foreach: m =>
         missingIn(m.desc).foreach(t => out += Finding(Conflict.MissingSignatureType(id, m.name, m.desc, t), RefKind.Hierarchy, -1))
       info.fields.foreach: f =>
@@ -188,7 +215,7 @@ object Checker:
       // members a framework reads those of.
       val generic = info.signatureTypes
       // A class handed to a bean framework is read whole (every property); otherwise only what a rule fires for.
-      lazy val reads = if readsAllTypes then (_: Int, _: Int) => true else rules.readsGenericTypes(info)
+      lazy val reads                         = if readsAllTypes then (_: Int, _: Int) => true else rules.readsGenericTypes(info)
       @tailrec def fromGeneric(i: Int): Unit =
         if i < generic.length then
           val t = ClassId(generic(i + 2))
@@ -210,7 +237,7 @@ object Checker:
       if !info.superName.isNone && requireUsable(info.superName, RefKind.Hierarchy, -1) then
         index.get(info.superName) match
           case null => ()
-          case sup =>
+          case sup  =>
             if sup.isInterface then hierarchy(info.superName, HierarchyChange.SuperclassIsInterface)
             else if sup.access.has(Final) then hierarchy(info.superName, HierarchyChange.SuperclassIsFinal)
       info.interfaces.foreach: i =>
@@ -218,10 +245,14 @@ object Checker:
           index.get(i) match
             case null => ()
             case t    => if !t.isInterface then hierarchy(i, HierarchyChange.InterfaceIsClass)
-      overrides.finalOverridden(info).foreach: (declaring, m) =>
-        out += Finding(Conflict.OverridesFinalMethod(id, declaring, info.methods(m).name, info.methods(m).desc), RefKind.Hierarchy, -1)
-      impls.unimplemented(info).foreach: (declaring, method) =>
-        out += Finding(Conflict.AbstractMethodNotImplemented(id, declaring, method.name, method.desc), RefKind.Hierarchy, -1)
+      overrides
+        .finalOverridden(info)
+        .foreach: (declaring, m) =>
+          out += Finding(Conflict.OverridesFinalMethod(id, declaring, info.methods(m).name, info.methods(m).desc), RefKind.Hierarchy, -1)
+      impls
+        .unimplemented(info)
+        .foreach: (declaring, method) =>
+          out += Finding(Conflict.AbstractMethodNotImplemented(id, declaring, method.name, method.desc), RefKind.Hierarchy, -1)
 
     /** `n` is the position in `info.newRefs` of the next `new` at or after entry `i`: both lists are in order, so they merge. */
     @tailrec private def checkTypeRefs(i: Int, n: Int): Unit =
@@ -232,7 +263,7 @@ object Checker:
         if requireUsable(target, RefKind.Type, i) && isNew then
           index.get(target) match
             case null => ()
-            case t =>
+            case t    =>
               if t.isInterface then out += Finding(Conflict.AbstractInstantiated(target, id, Uninstantiable.Interface), RefKind.Type, i)
               else if t.isAbstract then out += Finding(Conflict.AbstractInstantiated(target, id, Uninstantiable.Abstract), RefKind.Type, i)
         checkTypeRefs(i + 1, if isNew then n + 1 else n)
@@ -261,7 +292,7 @@ object Checker:
           // Constructors are left out: a changed supertype is reported once, as the hierarchy conflict.
           index.get(owner) match
             case null => ()
-            case o =>
+            case o    =>
               if name != initName && o.isInterface != CallRef.isInterface(m(i + 3)) then
                 val now = if o.isInterface then OwnerKind.Interface else OwnerKind.Class
                 out += Finding(Conflict.InterfaceKindChanged(owner, name, desc, id, now), RefKind.Method, i / 4)
@@ -285,8 +316,7 @@ object Checker:
           reportField(res, owner, name, desc, i / 3)
           res match
             case Resolution.Found(declaring, member) =>
-              if !access.fieldAccessible(info, declaring, member) then
-                out += Finding(Conflict.InaccessibleField(owner, name, desc, id), RefKind.Field, i / 3)
+              if !access.fieldAccessible(info, declaring, member) then out += Finding(Conflict.InaccessibleField(owner, name, desc, id), RefKind.Field, i / 3)
               // A write needs the field to be non-final, or to be written by its own class.
               else if declaring != id && info.isFieldWrite(i / 3) && isFinalField(declaring, member) then
                 out += Finding(Conflict.FinalFieldWritten(owner, name, desc, id), RefKind.Field, i / 3)

@@ -5,10 +5,9 @@ import reachablelinkage.classfile.{CallKind, ClassInfo, Keys}
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.{ClassId, DescId, NameId}
 
-/**
- * JVMS 5.4.3 member lookup at Class precision: the member must exist somewhere in the owner's
- * superclass and superinterface closure. Results are memoized per (owner, member, kind).
- */
+/** JVMS 5.4.3 member lookup at Class precision: the member must exist somewhere in the owner's superclass and superinterface closure. Results are memoized per
+  * (owner, member, kind).
+  */
 private[linkage] final class Resolver(index: ClassIndex):
   import Resolver.*
 
@@ -36,10 +35,9 @@ private[linkage] final class Resolver(index: ClassIndex):
         r
       case hit => hit
 
-  /**
-   * @param root true for the class named by the reference. Static interface methods are not
-   *             inherited (JVMS 5.4.3.3), so they only count when the interface is the root.
-   */
+  /** @param root
+    *   true for the class named by the reference. Static interface methods are not inherited (JVMS 5.4.3.3), so they only count when the interface is the root.
+    */
   private def search(id: ClassId, key: Long, kind: MemberKind, root: Boolean, seen: java.util.HashSet[Int]): Resolution =
     if !seen.add(id.value) then Resolution.NotFound
     else
@@ -47,10 +45,11 @@ private[linkage] final class Resolver(index: ClassIndex):
         case null => Resolution.Incomplete(id)
         case info =>
           val inheritedInterface = !root && info.isInterface
-          val here = memberIn(info, key, kind)
+          val here               = memberIn(info, key, kind)
           if here != Absent && !(kind == MemberKind.StaticMethod && inheritedInterface) then Resolution.Found(id, here)
           else if kind != MemberKind.Field && !(kind == MemberKind.InstanceMethod && inheritedInterface) &&
-            memberIn(info, key, opposite(kind)) != Absent then Resolution.KindMismatch
+            memberIn(info, key, opposite(kind)) != Absent
+          then Resolution.KindMismatch
           else
             // The superclass first, then each interface; stop as soon as one branch finds it.
             @tailrec def interfaces(i: Int, best: Resolution): Resolution =

@@ -7,11 +7,9 @@ import reachablelinkage.classfile.Keys
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.{ClassId, DescId, NameId}
 
-/**
- * The methods that the checked classes name in a call, and the method names they look up by a constant (`getMethod("run")`). It is what a
- * check without a call graph can still say about an abstract method nothing implements: if no class names it, nothing calls it.
- * Built once, over the classes the walk reached.
- */
+/** The methods that the checked classes name in a call, and the method names they look up by a constant (`getMethod("run")`). It is what a check without a call
+  * graph can still say about an abstract method nothing implements: if no class names it, nothing calls it. Built once, over the classes the walk reached.
+  */
 private[linkage] final class NamedMethods private (called: LongSet, looked: BitSet):
 
   /** Does some reached class contain a call to a method with this name and descriptor (on any owner)? */
@@ -22,8 +20,8 @@ private[linkage] final class NamedMethods private (called: LongSet, looked: BitS
 
 private[linkage] object NamedMethods:
   def of(index: ClassIndex, reached: BitSet): NamedMethods =
-    val called = new LongSet
-    val looked = new BitSet
+    val called                         = new LongSet
+    val looked                         = new BitSet
     @tailrec def classes(r: Int): Unit =
       if r >= 0 then
         index.get(ClassId(r)) match

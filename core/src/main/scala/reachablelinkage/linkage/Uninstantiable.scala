@@ -4,5 +4,6 @@ package reachablelinkage.linkage
 enum Uninstantiable:
   /** It is now an `abstract` class. */
   case Abstract
+
   /** It is now an interface. */
   case Interface

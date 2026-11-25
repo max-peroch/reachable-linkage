@@ -14,7 +14,7 @@ object JavaFixture:
     val work  = FixtureDirs.fresh()
     val out   = Files.createDirectory(work.resolve("out"))
     val files = FixtureDirs.writeSources(work, sources)
-    val cp   = classpath.map(_.toString).mkString(java.io.File.pathSeparator)
+    val cp    = classpath.map(_.toString).mkString(java.io.File.pathSeparator)
     // --release and --add-exports cannot be combined, so extra arguments mean compiling against the running JDK's own classes.
     val args = Seq("-d", out.toString, "-cp", cp, "-proc:none", "-nowarn") ++ (if extraArgs.isEmpty then Seq("--release", "17") else extraArgs) ++ files
     val err  = new java.io.ByteArrayOutputStream()

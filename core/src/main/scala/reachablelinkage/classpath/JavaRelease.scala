@@ -1,6 +1,8 @@
 package reachablelinkage.classpath
 
-/** The Java release the running JVM implements, from `java.specification.version` (`1.8` on Java 8, `17` on Java 17), because `Runtime.version` does not exist before Java 9. */
+/** The Java release the running JVM implements, from `java.specification.version` (`1.8` on Java 8, `17` on Java 17), because `Runtime.version` does not exist
+  * before Java 9.
+  */
 private[reachablelinkage] object JavaRelease:
 
   /** The release of the running JVM: 8, 11, 17... */

@@ -4,10 +4,9 @@ import reachablelinkage.classfile.ClassInfo
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.ClassId
 
-/**
- * Finds the method and line behind a [[Finding]] by re-reading just that class with debug info.
- * Only the classes that actually have findings are ever re-read, so the check itself stays cheap.
- */
+/** Finds the method and line behind a [[Finding]] by re-reading just that class with debug info. Only the classes that actually have findings are ever re-read,
+  * so the check itself stays cheap.
+  */
 final class Locator(index: ClassIndex):
   private val cache = new java.util.HashMap[Int, ClassInfo | Null]()
 

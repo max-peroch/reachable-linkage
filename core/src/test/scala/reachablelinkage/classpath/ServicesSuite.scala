@@ -18,8 +18,9 @@ class ServicesSuite extends munit.FunSuite:
   private def writeJar(entries: (String, String)*): Path =
     val jar = Files.createTempFile("services", ".jar")
     val out = new JarOutputStream(Files.newOutputStream(jar))
-    try entries.foreach: (name, content) =>
-      out.putNextEntry(new ZipEntry(name)); out.write(content.getBytes("UTF-8")); out.closeEntry()
+    try
+      entries.foreach: (name, content) =>
+        out.putNextEntry(new ZipEntry(name)); out.write(content.getBytes("UTF-8")); out.closeEntry()
     finally out.close()
     jar
 
@@ -44,18 +45,16 @@ class ServicesSuite extends munit.FunSuite:
   }
 
   test("providers are read from the classpath; one that is not there is recorded as missing") {
-    val dir = compile(Map(
-      "lib/Service.java"  -> "package lib; public interface Service { }",
-      "lib/Provider.java" -> "package lib; public class Provider implements Service { }"))
+    val dir = compile(
+      Map("lib/Service.java" -> "package lib; public interface Service { }", "lib/Provider.java" -> "package lib; public class Provider implements Service { }")
+    )
     Files.createDirectories(dir.resolve("META-INF/services"))
     Files.writeString(dir.resolve("META-INF/services/lib.Service"), "lib.Provider\nlib.Nope\n")
-    val syms  = new Symbols
-    val index = ClassIndex(Vector(source(dir), ClassSource.jdk()), syms)
+    val syms      = new Symbols
+    val index     = ClassIndex(Vector(source(dir), ClassSource.jdk()), syms)
     val providers = index.services.providersOf(syms.classId("lib/Service")).map(syms.className).toList
     assertEquals(providers, List("lib/Provider"))
-    assertEquals(
-      index.services.missing.map(m => (syms.className(m.service), syms.className(m.provider), m.entry)),
-      Vector(("lib/Service", "lib/Nope", 0)))
+    assertEquals(index.services.missing.map(m => (syms.className(m.service), syms.className(m.provider), m.entry)), Vector(("lib/Service", "lib/Nope", 0)))
     assertEquals(index.services.interfaces.map(syms.className).toList, List("lib/Service"))
     assertEquals(index.services.providersOf(syms.classId("lib/Other")).length, 0)
   }

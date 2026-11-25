@@ -7,19 +7,17 @@ import reachablelinkage.classfile.{ClassInfo, Probe}
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.ClassId
 
-/**
- * Class-level reachability: the transitive closure of supertypes and referenced classes, plus the
- * `ServiceLoader` providers nothing names: a provider of a library interface starts once the
- * interface is reached (loading it means naming it), and a provider of a JDK interface always starts
- * (JDK code loads those, and the JDK is not walked). A string constant that names a class on the
- * classpath (`Class.forName("x.Y")`) counts as a reference to it.
- */
+/** Class-level reachability: the transitive closure of supertypes and referenced classes, plus the `ServiceLoader` providers nothing names: a provider of a
+  * library interface starts once the interface is reached (loading it means naming it), and a provider of a JDK interface always starts (JDK code loads those,
+  * and the JDK is not walked). A string constant that names a class on the classpath (`Class.forName("x.Y")`) counts as a reference to it.
+  */
 private[linkage] object Reachability:
 
-  /**
-   * @param traverse indices of the classpath entries the walk may enter (a bit per entry)
-   * @return a bit per class id that is reachable from `roots`
-   */
+  /** @param traverse
+    *   indices of the classpath entries the walk may enter (a bit per entry)
+    * @return
+    *   a bit per class id that is reachable from `roots`
+    */
   def classes(index: ClassIndex, rules: KeepRules, roots: Iterable[ClassId], traverse: BitSet): BitSet =
     classes(index, roots, traverse, new FrameworkTargets(index, rules, Generated.of(index, rules), traverse))
 
@@ -32,9 +30,9 @@ private[linkage] object Reachability:
 
   /** One walk: the classes seen so far and the ones still to read. Each method says one thing a reached class makes reachable. */
   private final class Walk(index: ClassIndex, traverse: BitSet, targets: FrameworkTargets):
-    val seen                                        = new BitSet()
-    private val stack                               = new IntList
-    private val services                            = index.services
+    val seen             = new BitSet()
+    private val stack    = new IntList
+    private val services = index.services
 
     private def isTraversed(id: ClassId): Boolean =
       val source = index.sourceIndex(id)
@@ -81,8 +79,8 @@ private[linkage] object Reachability:
     /** Constant-name reflection: a string naming a class on the classpath loads it. */
     private def pushClassesNamedByConstants(info: ClassInfo): Unit =
       info.probes.foreach:
-        case Probe.ClassName(name)  => pushNamedClass(index.syms.findClass(name))
-        case Probe.NameTail(suffix) => index.endingWith(suffix).foreach(pushNamedClass)
+        case Probe.ClassName(name)                          => pushNamedClass(index.syms.findClass(name))
+        case Probe.NameTail(suffix)                         => index.endingWith(suffix).foreach(pushNamedClass)
         case Probe.MethodName(_) | Probe.LambdaInterface(_) => ()
 
     /** A class a framework ignores unless its conditions hold (`RequiresClasses`) is not loaded by a name either. */

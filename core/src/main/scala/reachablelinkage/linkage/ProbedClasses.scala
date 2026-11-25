@@ -8,16 +8,14 @@ import reachablelinkage.classfile.{ClassInfo, Probe}
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.ClassId
 
-/**
- * The missing classes that reached code names in a string constant, and, when the library of a class it asks for is not on the classpath at all, the
- * other missing classes of that library. Code that is about to use an optional class tends to ask whether it is there first, by that name, and that asks
- * about its library.
- *
- * The library is the tree under any prefix of the package asked about (`net/sf/jsqlparser` for `net/sf/jsqlparser/parser`, or
- * `org/apache/logging/log4j/core` when only log4j-api is there). If no class of that tree is on the classpath, the library is absent as a whole and any
- * other missing class of it is part of the same optional dependency. A tree that is still partly there is a library whose version changed, which is a
- * real break and is never hidden.
- */
+/** The missing classes that reached code names in a string constant, and, when the library of a class it asks for is not on the classpath at all, the other
+  * missing classes of that library. Code that is about to use an optional class tends to ask whether it is there first, by that name, and that asks about its
+  * library.
+  *
+  * The library is the tree under any prefix of the package asked about (`net/sf/jsqlparser` for `net/sf/jsqlparser/parser`, or `org/apache/logging/log4j/core`
+  * when only log4j-api is there). If no class of that tree is on the classpath, the library is absent as a whole and any other missing class of it is part of
+  * the same optional dependency. A tree that is still partly there is a library whose version changed, which is a real break and is never hidden.
+  */
 private[linkage] object ProbedClasses:
 
   /** The ids of the missing classes among `findings` that are probed. */
@@ -35,9 +33,11 @@ private[linkage] object ProbedClasses:
 
   private def missingClasses(findings: ArrayBuffer[Finding]): BitSet =
     val missing = new BitSet()
-    findings.foreach(f => f.conflict match
-      case Conflict.MissingClass(m, _) => missing.set(m.value)
-      case _                           => ())
+    findings.foreach(f =>
+      f.conflict match
+        case Conflict.MissingClass(m, _) => missing.set(m.value)
+        case _                           => ()
+    )
     missing
 
   /** A name that is asked for and is not there is a probe, whether or not anything also refers to the class; its package is a library asked about. */

@@ -10,20 +10,21 @@ private[api] object LinkageRequestDecoder:
 
   def decode(request: JMap[String, AnyRef]): Either[String, LinkageRequest] =
     for
-      projectClasses    <- paths(request, "projectClasses")
-      _                 <- Either.cond(projectClasses.nonEmpty, (), "'projectClasses' must list at least one path")
-      classpath         <- classpathEntries(request)
-      scope             <- enumValue(request, "scope", CheckScope.values(), CheckScope.App)
-      precision         <- enumValue(request, "precision", CheckPrecision.values(), CheckPrecision.METHOD)
-      excluded          <- strings(request, "excludedEntries")
-      bootClasspath     <- paths(request, "bootClasspath")
-      cacheDirectory    <- optionalString(request, "cacheDirectory")
-      javaRelease       <- optionalInt(request, "javaRelease")
-      conflictFilter    <- conflictFilter(request)
-      keepRules         <- keepRules(request)
-      loadedClasses     <- loadedClasses(request)
+      projectClasses <- paths(request, "projectClasses")
+      _              <- Either.cond(projectClasses.nonEmpty, (), "'projectClasses' must list at least one path")
+      classpath      <- classpathEntries(request)
+      scope          <- enumValue(request, "scope", CheckScope.values(), CheckScope.App)
+      precision      <- enumValue(request, "precision", CheckPrecision.values(), CheckPrecision.METHOD)
+      excluded       <- strings(request, "excludedEntries")
+      bootClasspath  <- paths(request, "bootClasspath")
+      cacheDirectory <- optionalString(request, "cacheDirectory")
+      javaRelease    <- optionalInt(request, "javaRelease")
+      conflictFilter <- conflictFilter(request)
+      keepRules      <- keepRules(request)
+      loadedClasses  <- loadedClasses(request)
     yield
-      val base = LinkageRequest.builder()
+      val base = LinkageRequest
+        .builder()
         .withProjectClasses(projectClasses.asJava)
         .withClasspath(classpath.asJava)
         .withScope(scope)
@@ -51,7 +52,7 @@ private[api] object LinkageRequestDecoder:
   /** A flat list of strings. */
   private def strings(request: JMap[String, AnyRef], key: String): Either[String, List[String]] =
     value(request, key) match
-      case None => Right(Nil)
+      case None                 => Right(Nil)
       case Some(list: JList[?]) =>
         val items = list.asScala.toList.collect { case s: String => s }
         Either.cond(items.size == list.size, items, s"'$key' must be a list of strings")
@@ -62,15 +63,15 @@ private[api] object LinkageRequestDecoder:
 
   private def optionalString(request: JMap[String, AnyRef], key: String): Either[String, Option[String]] =
     value(request, key) match
-      case None              => Right(None)
-      case Some(s: String)   => Right(Some(s))
-      case Some(_)           => Left(s"'$key' must be a string")
+      case None            => Right(None)
+      case Some(s: String) => Right(Some(s))
+      case Some(_)         => Left(s"'$key' must be a string")
 
   private def optionalInt(request: JMap[String, AnyRef], key: String): Either[String, Option[Int]] =
     value(request, key) match
-      case None                    => Right(None)
+      case None                      => Right(None)
       case Some(n: java.lang.Number) => Right(Some(n.intValue))
-      case Some(_)                 => Left(s"'$key' must be an integer")
+      case Some(_)                   => Left(s"'$key' must be an integer")
 
   /** A list of lists of strings, each exactly `width` long. */
   private def stringRows(request: JMap[String, AnyRef], key: String, width: Int): Either[String, List[List[String]]] =
@@ -81,7 +82,7 @@ private[api] object LinkageRequestDecoder:
       case _ => None
     val problem = s"'$key' must be a list of $width-string lists"
     value(request, key) match
-      case None => Right(Nil)
+      case None                 => Right(Nil)
       case Some(rows: JList[?]) =>
         val decoded = rows.asScala.toList.map(row)
         Either.cond(decoded.forall(_.isDefined), decoded.flatten, problem)
@@ -96,7 +97,7 @@ private[api] object LinkageRequestDecoder:
 
   private def enumValue[E <: java.lang.Enum[E]](request: JMap[String, AnyRef], key: String, all: Array[E], default: E): Either[String, E] =
     optionalString(request, key).flatMap:
-      case None => Right(default)
+      case None       => Right(default)
       case Some(name) =>
         all.find(_.name.equalsIgnoreCase(name)).toRight(s"'$key' must be one of ${all.map(_.name).mkString(", ")}, not '$name'")
 

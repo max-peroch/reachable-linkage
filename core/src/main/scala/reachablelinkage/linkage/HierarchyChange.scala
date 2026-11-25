@@ -4,7 +4,9 @@ package reachablelinkage.linkage
 enum HierarchyChange:
   /** The superclass became `final`. */
   case SuperclassIsFinal
+
   /** The superclass became an interface. */
   case SuperclassIsInterface
+
   /** A type the class implements became a class. */
   case InterfaceIsClass

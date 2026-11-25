@@ -5,6 +5,7 @@ import java.nio.file.Path
 /** Why a class-load log could not be used. */
 enum ClassLoadLogError:
   case Unreadable(file: Path, cause: String)
+
   /** The file has no class-load line at all, so it is not a log made with `-Xlog:class+load` (or `-verbose:class`). */
   case NoClassesLogged(file: Path)
 

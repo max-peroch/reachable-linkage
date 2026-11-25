@@ -4,10 +4,10 @@ import reachablelinkage.classpath.ClassIndex
 
 /** Whether an enclosing `catch` handles the error a conflict would throw. */
 private[linkage] object Guarding:
-  /**
-   * @param inherited the guard every call reaching the method holding the reference carries (0 at
-   *                  Class precision, which has no call graph); it only counts for an instruction
-   */
+  /** @param inherited
+    *   the guard every call reaching the method holding the reference carries (0 at Class precision, which has no call graph); it only counts for an
+    *   instruction
+    */
   def isGuarded(index: ClassIndex, f: Finding, inherited: Int): Boolean =
     val stops = f.conflict.describe.stoppedBy
     stops != 0 && {

@@ -8,5 +8,5 @@ enum SourceError:
   case CannotOpen(path: Path, cause: String)
 
   def message: String = this match
-    case NotFound(p)       => s"not found: $p"
-    case CannotOpen(p, c)  => s"cannot open $p: $c"
+    case NotFound(p)      => s"not found: $p"
+    case CannotOpen(p, c) => s"cannot open $p: $c"

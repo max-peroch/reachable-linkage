@@ -4,5 +4,6 @@ package reachablelinkage.api
 enum FilterMode:
   /** Drop them. */
   case Ignore
+
   /** Keep only them. */
   case Target

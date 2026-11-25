@@ -6,10 +6,10 @@ final class Symbols:
   private val names   = new Interner
   private val descs   = new Interner
 
-  def classId(internalName: String): ClassId = ClassId(classes.intern(internalName))
+  def classId(internalName: String): ClassId   = ClassId(classes.intern(internalName))
   def findClass(internalName: String): ClassId = ClassId(classes.lookup(internalName))
-  def nameId(n: String): NameId              = NameId(names.intern(n))
-  def descId(d: String): DescId              = DescId(descs.intern(d))
+  def nameId(n: String): NameId                = NameId(names.intern(n))
+  def descId(d: String): DescId                = DescId(descs.intern(d))
 
   /** How many names of each kind have been interned so far. */
   def classCount: Int = classes.size

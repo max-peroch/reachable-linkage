@@ -22,7 +22,12 @@ class ClassSourceSuite extends munit.FunSuite:
     assertEquals(ClassSource.open(missing).left.toOption, Some(SourceError.NotFound(missing)))
     val notAJar = dir.resolve("text.jar")
     java.nio.file.Files.writeString(notAJar, "this is not a zip file")
-    assert(ClassSource.open(notAJar).left.exists:
-      case SourceError.CannotOpen(p, _) => p == notAJar
-      case _                            => false)
+    assert(
+      ClassSource
+        .open(notAJar)
+        .left
+        .exists:
+          case SourceError.CannotOpen(p, _) => p == notAJar
+          case _                            => false
+    )
   }

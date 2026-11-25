@@ -23,12 +23,18 @@ class ClassLoadLogSuite extends munit.FunSuite:
   }
 
   test("hidden classes, other log output and blank lines name nothing") {
-    assertEquals(classes(
-      "[0.1s][info][class,load] app.Main$$Lambda/0x0000000800c03000 source: app.Main",
-      "[0.1s][info][class,load] java.lang.invoke.LambdaForm$MH/0x000001 source: __JVM_LookupDefineClass__",
-      "[0.1s][info][gc] Using G1",
-      "[Loaded app.Main$$Lambda$14/1234567 from app.Main]",
-      "", "Hello from the application", "source: nothing"), Nil)
+    assertEquals(
+      classes(
+        "[0.1s][info][class,load] app.Main$$Lambda/0x0000000800c03000 source: app.Main",
+        "[0.1s][info][class,load] java.lang.invoke.LambdaForm$MH/0x000001 source: __JVM_LookupDefineClass__",
+        "[0.1s][info][gc] Using G1",
+        "[Loaded app.Main$$Lambda$14/1234567 from app.Main]",
+        "",
+        "Hello from the application",
+        "source: nothing"
+      ),
+      Nil
+    )
   }
 
   test("a class is listed once, in the order it was first loaded") {
@@ -37,9 +43,9 @@ class ClassLoadLogSuite extends munit.FunSuite:
 
   test("a real log, made by a real JVM, names the program's classes and the JDK's") {
     val (v1, _) = GoneLibrary.build(Map("lib/Util.java" -> "package lib; public class Util { public static void hi() { } }"))
-    val app = compile(Map("app/Launch.java" -> "package app; public class Launch { public static void main(String[] a) { lib.Util.hi(); } }"), Seq(v1))
-    val log = RunLog.of(Seq(app, v1), "app.Launch")
-    val parsed = ClassLoadLog.parse(log).fold(e => fail(e.message), _.classes.asScala.toSet)
+    val app     = compile(Map("app/Launch.java" -> "package app; public class Launch { public static void main(String[] a) { lib.Util.hi(); } }"), Seq(v1))
+    val log     = RunLog.of(Seq(app, v1), "app.Launch")
+    val parsed  = ClassLoadLog.parse(log).fold(e => fail(e.message), _.classes.asScala.toSet)
     assert(Set("app.Launch", "lib.Util", "java.lang.Object").subsetOf(parsed), parsed.take(5).toString)
     assert(parsed.size > 100, "a JVM loads hundreds of classes before main")
   }
@@ -54,13 +60,30 @@ class ClassLoadLogSuite extends munit.FunSuite:
 
   private val lib = Map(
     "lib/Svc.java"  -> "package lib; public interface Svc { void run(); }",
-    "lib/Impl.java" -> "package lib; public class Impl implements Svc { public void run() { Gone.x(); } }")
+    "lib/Impl.java" -> "package lib; public class Impl implements Svc { public void run() { Gone.x(); } }"
+  )
 
   private def check(loaded: Set[String]): LinkageResult =
     val (v1, v2) = GoneLibrary.build(lib)
-    val app = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { try { ((lib.Svc) Class.forName(String.join(\"\", \"lib.\", \"Im\", \"pl\")).getDeclaredConstructor().newInstance()).run(); } catch (ReflectiveOperationException e) { throw new RuntimeException(e); } } }"), Seq(v1))
-    Linkage.check(LinkageRequest(java.util.List.of(app), java.util.List.of(ClasspathEntry("lib", Jars.of(v2))), CheckScope.App,
-      java.util.Set.of(), java.util.List.of(), CheckPrecision.METHOD, java.util.Optional.empty[Path](), KeepRule.standard(), loaded.asJava))
+    val app      = compile(
+      Map(
+        "app/Main.java" -> "package app; public class Main { public static void run() { try { ((lib.Svc) Class.forName(String.join(\"\", \"lib.\", \"Im\", \"pl\")).getDeclaredConstructor().newInstance()).run(); } catch (ReflectiveOperationException e) { throw new RuntimeException(e); } } }"
+      ),
+      Seq(v1)
+    )
+    Linkage.check(
+      LinkageRequest(
+        java.util.List.of(app),
+        java.util.List.of(ClasspathEntry("lib", Jars.of(v2))),
+        CheckScope.App,
+        java.util.Set.of(),
+        java.util.List.of(),
+        CheckPrecision.METHOD,
+        java.util.Optional.empty[Path](),
+        KeepRule.standard(),
+        loaded.asJava
+      )
+    )
 
   test("a class the log names is checked, though the application never mentions it") {
     val without = check(Set.empty)
@@ -88,4 +111,3 @@ class ClassLoadLogSuite extends munit.FunSuite:
     val log = ClassLoadLog.parse(file("a.B source: x")).fold(e => fail(e.message), identity)
     intercept[UnsupportedOperationException](log.classes.add("evil.Injected"))
   }
-

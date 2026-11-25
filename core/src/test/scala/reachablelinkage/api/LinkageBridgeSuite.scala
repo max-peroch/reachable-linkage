@@ -14,7 +14,8 @@ class LinkageBridgeSuite extends munit.FunSuite:
   // `Used.run` calls the broken method; `Util.unused` does too, but nothing calls it.
   private val lib = Map(
     "lib/Used.java" -> "package lib; public class Used { public static void run() { Gone.x(); } }",
-    "lib/Util.java" -> "package lib; public class Util { public static void unused() { Gone.x(); } public static void used() { } }")
+    "lib/Util.java" -> "package lib; public class Util { public static void unused() { Gone.x(); } public static void used() { } }"
+  )
 
   private def scenario(body: String): (Path, Path) =
     val (v1, v2) = GoneLibrary.build(lib)
@@ -32,19 +33,27 @@ class LinkageBridgeSuite extends munit.FunSuite:
 
   test("the bridge reports the same conflicts as the facade, with the same labels") {
     val (app, v2) = scenario("lib.Used.run(); lib.Util.used();")
-    val direct = Linkage.check(LinkageRequest.builder()
-      .withProjectClasses(Collections.singletonList(app))
-      .withClasspath(Collections.singletonList(ClasspathEntry("lib", v2))).build())
+    val direct    = Linkage.check(
+      LinkageRequest
+        .builder()
+        .withProjectClasses(Collections.singletonList(app))
+        .withClasspath(Collections.singletonList(ClasspathEntry("lib", v2)))
+        .build()
+    )
     val bridged = conflicts(LinkageBridge.check(request(app, v2)))
 
     assertEquals(bridged.size, direct.conflicts.size)
-    assertEquals(bridged.map(c => (c.get("category"), c.get("label"), c.get("fromClass"), c.get("fromMethodName"), c.get("targetClass"), c.get("targetMemberName"))).toSet,
-      direct.conflicts.asScala.map(c => (c.category.name, c.label.name, c.dependency.fromClass, c.dependency.fromMethodName, c.dependency.targetClass, c.dependency.targetMemberName)).toSet)
+    assertEquals(
+      bridged.map(c => (c.get("category"), c.get("label"), c.get("fromClass"), c.get("fromMethodName"), c.get("targetClass"), c.get("targetMemberName"))).toSet,
+      direct.conflicts.asScala
+        .map(c => (c.category.name, c.label.name, c.dependency.fromClass, c.dependency.fromMethodName, c.dependency.targetClass, c.dependency.targetMemberName))
+        .toSet
+    )
   }
 
   test("a conflict says whether it fails the default fail level and whether missinglink-core would report it") {
     val (app, v2) = scenario("lib.Used.run(); lib.Util.used();")
-    val byMethod = conflicts(LinkageBridge.check(request(app, v2))).map(c => c.get("fromMethodName") -> c).toMap
+    val byMethod  = conflicts(LinkageBridge.check(request(app, v2))).map(c => c.get("fromMethodName") -> c).toMap
     val reached   = byMethod("run")
     assertEquals(reached.get("label"), "REACHABLE")
     assertEquals(reached.get("failing"), java.lang.Boolean.TRUE)
@@ -57,27 +66,31 @@ class LinkageBridgeSuite extends munit.FunSuite:
 
   test("enum values and class precision are read whatever their case, and class precision reaches every conflict") {
     val (app, v2) = scenario("lib.Used.run();")
-    val response = LinkageBridge.check(request(app, v2, "precision" -> "class", "scope" -> "APP"))
+    val response  = LinkageBridge.check(request(app, v2, "precision" -> "class", "scope" -> "APP"))
     assert(conflicts(response).forall(_.get("label") == "REACHABLE"), "at class precision every conflict is reachable")
   }
 
   test("a package filter removes conflicts and is reported with its kind and count") {
     val (app, v2) = scenario("lib.Used.run(); lib.Util.used();")
-    val response = LinkageBridge.check(request(app, v2, "ignoreDestinationPackages" -> Collections.singletonList(Arrays.asList("lib", "true"))))
+    val response  = LinkageBridge.check(request(app, v2, "ignoreDestinationPackages" -> Collections.singletonList(Arrays.asList("lib", "true"))))
     assertEquals(conflicts(response), Nil)
     val filtered = response.get("filtered").asInstanceOf[JList[JList[String]]].asScala.map(_.asScala.toList).toList
     assertEquals(filtered, List(List("IGNORE_DESTINATION_PACKAGES", "2")))
   }
 
   test("a request that cannot be used comes back as an error value, with nothing else") {
-    val (app, v2) = scenario("lib.Used.run();")
+    val (app, v2)                                 = scenario("lib.Used.run();")
     def errorOf(extra: (String, AnyRef)*): String = LinkageBridge.check(request(app, v2, extra*)).get("error").asInstanceOf[String]
 
     assert(errorOf("scope" -> "Everywhere").contains("'scope' must be one of App, Full"))
     assert(errorOf("javaRelease" -> "eight").contains("'javaRelease' must be an integer"))
     assert(errorOf("excludedEntries" -> "lib").contains("'excludedEntries' must be a list of strings"))
-    assert(errorOf("ignoreSourcePackages" -> Collections.singletonList(Arrays.asList("a", "true")),
-      "targetSourcePackages" -> Collections.singletonList(Arrays.asList("b", "true"))).contains("cannot be defined together"))
+    assert(
+      errorOf(
+        "ignoreSourcePackages" -> Collections.singletonList(Arrays.asList("a", "true")),
+        "targetSourcePackages" -> Collections.singletonList(Arrays.asList("b", "true"))
+      ).contains("cannot be defined together")
+    )
     assert(errorOf("targetSourcePackages" -> Collections.singletonList(Arrays.asList("not a package", "true"))).contains("not a package"))
     // A value that is not "true" or "false" is an error value, not an exception out of the bridge.
     assert(errorOf("ignoreSourcePackages" -> Collections.singletonList(Arrays.asList("com.acme", "maybe"))).contains("\"true\" or \"false\""))
@@ -94,7 +107,8 @@ class LinkageBridgeSuite extends munit.FunSuite:
     "lib/Svc.java"       -> "package lib; public class Svc { public Svc() { } @Wired public void go() { Gone.x(); } }",
     "lib/Container.java" -> "package lib; public class Container { public static Object start(Class<?> type) { return null; } }",
     // Nothing in the project names it: only a class-load log of a real run does.
-    "lib/Hidden.java"    -> "package lib; public class Hidden { public Hidden() { Gone.x(); } }")
+    "lib/Hidden.java" -> "package lib; public class Hidden { public Hidden() { Gone.x(); } }"
+  )
 
   private def wiredScenario(): (Path, Path) =
     val (v1, v2) = GoneLibrary.build(wiredLib)
@@ -117,7 +131,7 @@ class LinkageBridgeSuite extends munit.FunSuite:
 
   test("a rules file that cannot be read is an error value that says where") {
     val (app, v2) = wiredScenario()
-    val error = LinkageBridge.check(request(app, v2, "keepRulesFile" -> writeFile("keep-nothing lib.Wired\n"))).get("error").asInstanceOf[String]
+    val error     = LinkageBridge.check(request(app, v2, "keepRulesFile" -> writeFile("keep-nothing lib.Wired\n"))).get("error").asInstanceOf[String]
     assert(error.contains("keep-nothing"), error)
   }
 
@@ -130,12 +144,13 @@ class LinkageBridgeSuite extends munit.FunSuite:
   }
 
   test("nothing but java.util and java.lang types crosses the bridge, so no class of this library is shared with the caller") {
-    val (app, v2) = scenario("lib.Used.run();")
+    val (app, v2)                             = scenario("lib.Used.run();")
     def classesIn(value: AnyRef): Set[String] = value match
-      case null            => Set.empty
-      case m: JMap[?, ?]   => m.asScala.toList.flatMap((k, v) => classesIn(k.asInstanceOf[AnyRef]) ++ classesIn(v.asInstanceOf[AnyRef])).toSet + m.getClass.getName
-      case l: JList[?]     => l.asScala.toList.flatMap(e => classesIn(e.asInstanceOf[AnyRef])).toSet + l.getClass.getName
-      case other           => Set(other.getClass.getName)
+      case null          => Set.empty
+      case m: JMap[?, ?] =>
+        m.asScala.toList.flatMap((k, v) => classesIn(k.asInstanceOf[AnyRef]) ++ classesIn(v.asInstanceOf[AnyRef])).toSet + m.getClass.getName
+      case l: JList[?] => l.asScala.toList.flatMap(e => classesIn(e.asInstanceOf[AnyRef])).toSet + l.getClass.getName
+      case other       => Set(other.getClass.getName)
     val seen = classesIn(LinkageBridge.check(request(app, v2))) ++ classesIn(LinkageBridge.check(new HashMap[String, AnyRef]()))
     assert(seen.forall(_.startsWith("java.")), s"types from outside the JDK: ${seen.filterNot(_.startsWith("java."))}")
   }

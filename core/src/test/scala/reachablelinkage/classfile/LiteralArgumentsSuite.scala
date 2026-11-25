@@ -5,10 +5,9 @@ import java.nio.file.Files
 import reachablelinkage.fixture.JavaFixture.compile
 import reachablelinkage.symbols.{ClassId, NameId, Symbols}
 
-/**
- * A class literal (`Foo.class`) that is still on the stack when a call is made is an argument of that call (or its receiver): a framework
- * that is handed the class (`mapper.readValue(json, Foo.class)`) builds it and calls its accessors. Only what really reaches the call counts.
- */
+/** A class literal (`Foo.class`) that is still on the stack when a call is made is an argument of that call (or its receiver): a framework that is handed the
+  * class (`mapper.readValue(json, Foo.class)`) builds it and calls its accessors. Only what really reaches the call counts.
+  */
 class LiteralArgumentsSuite extends munit.FunSuite:
 
   private val dir = compile(
@@ -51,17 +50,21 @@ class LiteralArgumentsSuite extends munit.FunSuite:
           |  void boxed()         { sinkBox(new Box(Bar.class)); }
           |  void notAnObject()   { sinkLength(Baz.class.getModifiers()); }
           |}
-          |""".stripMargin))
+          |""".stripMargin
+    )
+  )
 
   private val syms = new Symbols
   private val info = ClassParser.parse(Files.readAllBytes(dir.resolve("p/User.class")), syms).fold(e => fail(e.message), identity)
 
   /** The `(owner.method, literal)` pairs recorded for calls of the method `callee`, by name. */
   private def recordedFor(callee: String): Set[(String, String)] =
-    info.literalArgs.grouped(3).collect:
-      case Array(owner, method, literal) if syms.name(NameId(method)) == callee =>
-        (s"${syms.className(ClassId(owner))}.$callee", syms.className(ClassId(literal)))
-    .toSet
+    info.literalArgs
+      .grouped(3)
+      .collect:
+        case Array(owner, method, literal) if syms.name(NameId(method)) == callee =>
+          (s"${syms.className(ClassId(owner))}.$callee", syms.className(ClassId(literal)))
+      .toSet
 
   test("a literal that is the last argument of a call is recorded against it") {
     assertEquals(recordedFor("sinkDirect"), Set(("p/User.sinkDirect", "p/Foo")))
@@ -123,4 +126,3 @@ class LiteralArgumentsSuite extends munit.FunSuite:
     assertEquals(recordedFor("id"), Set.empty[(String, String)])
     assertEquals(recordedFor("sinkId"), Set(("p/User.sinkId", "p/Foo")))
   }
-

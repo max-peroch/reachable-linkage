@@ -2,14 +2,15 @@ package reachablelinkage.fixture
 
 import java.nio.file.{Path, Paths}
 
-/**
- * Runs a static method of a fixture app in a child JVM, so a run can use JVM options the test JVM was not
- * started with (`--add-opens`, which frameworks such as Guice 4 need on a modern JDK) and a failure cannot
- * disturb the tests. Returns what went wrong, as the chain of (exception class, message), outermost first.
- */
+/** Runs a static method of a fixture app in a child JVM, so a run can use JVM options the test JVM was not started with (`--add-opens`, which frameworks such
+  * as Guice 4 need on a modern JDK) and a failure cannot disturb the tests. Returns what went wrong, as the chain of (exception class, message), outermost
+  * first.
+  */
 object ChildRun:
-  private val launcher: Path = JavaFixture.compile(Map("rl/ChildMain.java" ->
-    """package rl;
+  private val launcher: Path = JavaFixture.compile(
+    Map(
+      "rl/ChildMain.java" ->
+        """package rl;
       |public class ChildMain {
       |  public static void main(String[] a) throws Exception {
       |    try {
@@ -26,7 +27,9 @@ object ChildRun:
       |      System.exit(3);
       |    }
       |  }
-      |}""".stripMargin))
+      |}""".stripMargin
+    )
+  )
 
   /** Opens what Guice 4's bundled cglib needs to define classes on JDK 17 and later. */
   val AddOpens: Seq[String] = Seq("--add-opens", "java.base/java.lang=ALL-UNNAMED")

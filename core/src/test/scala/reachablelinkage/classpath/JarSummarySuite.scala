@@ -9,24 +9,24 @@ import reachablelinkage.classfile.{ClassInfo, ClassParser, Probe}
 import reachablelinkage.fixture.JavaFixture.compile
 import reachablelinkage.symbols.{ClassId, Symbols}
 
-/**
- * A jar summary is a cache of what `ClassParser` produces, so the one thing that must hold is that a
- * class decoded from it is exactly the class that parsing the jar would give, and that anything wrong
- * with the cache means parsing, never a wrong answer.
- */
+/** A jar summary is a cache of what `ClassParser` produces, so the one thing that must hold is that a class decoded from it is exactly the class that parsing
+  * the jar would give, and that anything wrong with the cache means parsing, never a wrong answer.
+  */
 class JarSummarySuite extends munit.FunSuite:
 
   private def freshDir(): Path = Files.createTempDirectory("jar-summary")
 
   private def summaryFiles(dir: Path): List[Path] =
     val s = Files.list(dir)
-    try s.iterator.asScala.filter(_.getFileName.toString.endsWith(".summary")).toList finally s.close()
+    try s.iterator.asScala.filter(_.getFileName.toString.endsWith(".summary")).toList
+    finally s.close()
 
   private def jar(entries: Seq[(String, Array[Byte])]): Path =
     val file = Files.createTempFile("fixture", ".jar")
     val out  = new JarOutputStream(Files.newOutputStream(file))
-    try entries.foreach: (name, bytes) =>
-      out.putNextEntry(new ZipEntry(name)); out.write(bytes); out.closeEntry()
+    try
+      entries.foreach: (name, bytes) =>
+        out.putNextEntry(new ZipEntry(name)); out.write(bytes); out.closeEntry()
     finally out.close()
     file
 
@@ -38,12 +38,16 @@ class JarSummarySuite extends munit.FunSuite:
   /** A class's content with every id turned back into its name, so two runs' ids can be compared. */
   private def render(i: ClassInfo, s: Symbols): String =
     def cls(id: Int): String = if id < 0 then "-" else s.className(ClassId(id))
-    val sb = new StringBuilder
+    val sb                   = new StringBuilder
     sb ++= s"${cls(i.id.value)} access=${i.access} super=${cls(i.superName.value)} ifaces=${i.interfaces.map(c => cls(c.value)).mkString(",")}\n"
     i.methods.foreach(m => sb ++= s"m ${s.name(m.name)}${s.desc(m.desc)} ${m.access}\n")
     i.fields.foreach(f => sb ++= s"f ${s.name(f.name)}:${s.desc(f.desc)} ${f.access}\n")
-    i.methodRefs.grouped(4).foreach(r => sb ++= s"mr ${cls(r(0))}.${s.name(reachablelinkage.symbols.NameId(r(1)))}${s.desc(reachablelinkage.symbols.DescId(r(2)))} ${r(3)}\n")
-    i.fieldRefs.grouped(3).foreach(r => sb ++= s"fr ${cls(r(0))}.${s.name(reachablelinkage.symbols.NameId(r(1)))}:${s.desc(reachablelinkage.symbols.DescId(r(2)))}\n")
+    i.methodRefs
+      .grouped(4)
+      .foreach(r => sb ++= s"mr ${cls(r(0))}.${s.name(reachablelinkage.symbols.NameId(r(1)))}${s.desc(reachablelinkage.symbols.DescId(r(2)))} ${r(3)}\n")
+    i.fieldRefs
+      .grouped(3)
+      .foreach(r => sb ++= s"fr ${cls(r(0))}.${s.name(reachablelinkage.symbols.NameId(r(1)))}:${s.desc(reachablelinkage.symbols.DescId(r(2)))}\n")
     sb ++= s"cr ${i.classRefs.map(cls).mkString(",")}\n"
     sb ++= s"starts ${i.methodRefStart.mkString(",")} | ${i.fieldRefStart.mkString(",")} | ${i.classRefStart.mkString(",")}\n"
     sb ++= s"guards ${i.guards.mkString(",")}\nprobes ${i.encodedProbes.mkString(",")}\n"
@@ -57,22 +61,26 @@ class JarSummarySuite extends munit.FunSuite:
     val plain  = ClassSource.open(file).toOption.get
     val a, b   = new Symbols
     var n      = 0
-    try cached.classNames.filterNot(c => c.endsWith("module-info") || c.endsWith("package-info")).foreach: name =>
-      val parsed  = ClassParser.parse(plain.read(name).get, a)
-      val decoded = cached.summarized(name, b)
-      parsed match
-        case Right(p) =>
-          assert(decoded != null, s"$name: parsed fine but the summary has no record")
-          assertEquals(render(decoded.nn, b), render(p, a), name)
-          n += 1
-        case Left(_) => assertEquals(decoded, null, s"$name does not parse, so the summary must not have it")
+    try
+      cached.classNames
+        .filterNot(c => c.endsWith("module-info") || c.endsWith("package-info"))
+        .foreach: name =>
+          val parsed  = ClassParser.parse(plain.read(name).get, a)
+          val decoded = cached.summarized(name, b)
+          parsed match
+            case Right(p) =>
+              assert(decoded != null, s"$name: parsed fine but the summary has no record")
+              assertEquals(render(decoded.nn, b), render(p, a), name)
+              n += 1
+            case Left(_) => assertEquals(decoded, null, s"$name does not parse, so the summary must not have it")
     finally { cached.close(); plain.close() }
     n
 
   private val compilerJars: Seq[Path] =
     val p  = new java.util.Properties()
     val in = getClass.getResourceAsStream("/scala-compilers.properties")
-    try p.load(in) finally in.close()
+    try p.load(in)
+    finally in.close()
     p.getProperty("2.13").split(java.io.File.pathSeparator).toSeq.map(Paths.get(_))
 
   test("every class of the five Scala 2.13 compiler jars decodes to exactly what parsing gives") {
@@ -90,7 +98,8 @@ class JarSummarySuite extends munit.FunSuite:
     "lib/Other.java" -> "package lib; public class Other { public static int X = 1; private int y; protected void p() {} }",
     "lib/Lambdas.java" -> "package lib; public class Lambdas { public static Runnable r() { return () -> Opt.has(); } public static java.util.function.Supplier<Other> s() { return Other::new; } }",
     "lib/Api.java" -> "package lib; public interface Api { void m(); default void d() { Opt.has(); } }",
-    "lib/E.java" -> "package lib; public enum E { A, B { void f() {} }; void f() {} }")
+    "lib/E.java"   -> "package lib; public enum E { A, B { void f() {} }; void f() {} }"
+  )
 
   test("a synthetic jar with guards, probes, handles, fields and an enum decodes exactly") {
     val classes = classesOf(compile(synthetic))
@@ -129,12 +138,13 @@ class JarSummarySuite extends munit.FunSuite:
   }
 
   test("a jar whose classes changed does not use the old summary") {
-    val cache = freshDir()
-    val all   = classesOf(compile(synthetic))
-    val path  = Files.createTempFile("changing", ".jar")
+    val cache                                            = freshDir()
+    val all                                              = classesOf(compile(synthetic))
+    val path                                             = Files.createTempFile("changing", ".jar")
     def write(entries: Seq[(String, Array[Byte])]): Unit =
       val out = new JarOutputStream(Files.newOutputStream(path))
-      try entries.foreach((n, b) => { out.putNextEntry(new ZipEntry(n)); out.write(b); out.closeEntry() }) finally out.close()
+      try entries.foreach((n, b) => { out.putNextEntry(new ZipEntry(n)); out.write(b); out.closeEntry() })
+      finally out.close()
     write(all.filterNot(_._1.contains("Other")))
     val v1 = ClassSource.open(path, Some(cache)).toOption.get
     assertEquals(v1.summarized("lib/Other", new Symbols), null)
@@ -148,17 +158,18 @@ class JarSummarySuite extends munit.FunSuite:
   }
 
   test("the fingerprint depends on the entry names, and on the classes' contents, and on nothing else") {
-    val classes = classesOf(compile(synthetic))
+    val classes                                             = classesOf(compile(synthetic))
     def fp(entries: Seq[(String, Array[Byte])]): List[Byte] =
       val file = jar(entries)
       val j    = new java.util.jar.JarFile(file.toFile)
-      try JarSummary.fingerprint(JarEntries.resolve(j, Runtime.version.feature)).toList finally j.close()
+      try JarSummary.fingerprint(JarEntries.resolve(j, Runtime.version.feature)).toList
+      finally j.close()
     val base = fp(classes)
     assertEquals(fp(classes), base, "the same jar gives the same fingerprint")
     assertEquals(fp(classes :+ ("META-INF/MANIFEST.MF" -> "x".getBytes)), base, "non-class entries are not part of it")
     val renamed = classes.updated(0, (classes.head._1.replace("lib/", "lib2/"), classes.head._2))
     assertNotEquals(fp(renamed), base, "a renamed entry changes it")
-    val first = classes.head
+    val first   = classes.head
     val changed = classes.updated(0, (first._1, first._2 :+ 0.toByte))
     assertNotEquals(fp(changed), base, "changed bytes change it")
   }
@@ -168,9 +179,9 @@ class JarSummarySuite extends munit.FunSuite:
     val file  = jar(classesOf(compile(synthetic)))
     val s1    = ClassSource.open(file, Some(cache)).toOption.get; s1.summarized("lib/Opt", new Symbols); s1.close()
     damage(summaryFiles(cache).head)
-    val s2    = ClassSource.open(file, Some(cache)).toOption.get
-    val ok    = s2.summarized("lib/Opt", new Symbols) != null
-    val out   = s2.asInstanceOf[JarSource].summaryOutcome
+    val s2  = ClassSource.open(file, Some(cache)).toOption.get
+    val ok  = s2.summarized("lib/Opt", new Symbols) != null
+    val out = s2.asInstanceOf[JarSource].summaryOutcome
     s2.close()
     (out, ok)
 
@@ -214,7 +225,7 @@ class JarSummarySuite extends munit.FunSuite:
 
   test("a class that does not parse has no record, and the others still do") {
     val classes = classesOf(compile(synthetic)) :+ ("lib/Broken.class" -> Array[Byte](0xca.toByte, 0xfe.toByte, 0xba.toByte, 0xbe.toByte, 0, 0))
-    val src = ClassSource.open(jar(classes), Some(freshDir())).toOption.get
+    val src     = ClassSource.open(jar(classes), Some(freshDir())).toOption.get
     assertEquals(src.summarized("lib/Broken", new Symbols), null)
     assert(src.summarized("lib/Opt", new Symbols) != null)
     src.close()
@@ -226,7 +237,30 @@ class JarSummarySuite extends munit.FunSuite:
     val shape = classOf[ClassInfo].getDeclaredConstructors.map(_.getParameterTypes.map(_.getSimpleName).toList).toList
     assertEquals(
       shape.filter(_.length == 20),
-      List(List("int", "int", "int", "int[]", "Member[]", "Member[]", "int[]", "int[]", "int[]", "int[]", "int[]", "int[]", "int[]", "String[]", "int[]", "int[]", "int[]", "int[]", "int[]", "Positions")),
+      List(
+        List(
+          "int",
+          "int",
+          "int",
+          "int[]",
+          "Member[]",
+          "Member[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "String[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "int[]",
+          "Positions"
+        )
+      ),
       "update JarSummary.encode/decode and bump ClassParser.Version"
     )
   }

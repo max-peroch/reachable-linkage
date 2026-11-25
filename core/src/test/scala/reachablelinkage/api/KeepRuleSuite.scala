@@ -35,12 +35,21 @@ class KeepRuleSuite extends munit.FunSuite:
   }
 
   test("a rules file is read: directives, several names, comments, blank lines, CRLF") {
-    val rules = KeepRule.parse(file(
-      "# the framework's entry points\r\n\r\nkeep-members   lib.Wired  lib.Other   # two annotations\r\nkeep-no-arg-constructor lib.Entity\nfollow-class-values lib.Uses\n"))
-    assertEquals(rules.map(_.map(r => (r.kind, names(r)))), Right(List(
-      (KeepRuleKind.KEEP_MEMBERS, List("lib.Wired", "lib.Other")),
-      (KeepRuleKind.KEEP_NO_ARG_CONSTRUCTOR, List("lib.Entity")),
-      (KeepRuleKind.FOLLOW_CLASS_VALUES, List("lib.Uses")))))
+    val rules = KeepRule.parse(
+      file(
+        "# the framework's entry points\r\n\r\nkeep-members   lib.Wired  lib.Other   # two annotations\r\nkeep-no-arg-constructor lib.Entity\nfollow-class-values lib.Uses\n"
+      )
+    )
+    assertEquals(
+      rules.map(_.map(r => (r.kind, names(r)))),
+      Right(
+        List(
+          (KeepRuleKind.KEEP_MEMBERS, List("lib.Wired", "lib.Other")),
+          (KeepRuleKind.KEEP_NO_ARG_CONSTRUCTOR, List("lib.Entity")),
+          (KeepRuleKind.FOLLOW_CLASS_VALUES, List("lib.Uses"))
+        )
+      )
+    )
   }
 
   test("an empty file or one with only comments is no rules") {
@@ -77,35 +86,54 @@ class KeepRuleSuite extends munit.FunSuite:
   // ---- through the facade ----
 
   private val lib = Map(
-    "lib/Wired.java" -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) public @interface Wired { }",
-    "lib/Svc.java"   -> "package lib; public class Svc { public Svc() { } @Wired public void go() { Gone.x(); } }",
-    "lib/Container.java" -> "package lib; public class Container { public static Object start(Class<?> t) { return null; } }")
+    "lib/Wired.java"     -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) public @interface Wired { }",
+    "lib/Svc.java"       -> "package lib; public class Svc { public Svc() { } @Wired public void go() { Gone.x(); } }",
+    "lib/Container.java" -> "package lib; public class Container { public static Object start(Class<?> t) { return null; } }"
+  )
 
   private def check(rules: java.util.List[KeepRule]): LinkageResult =
     val (v1, v2) = GoneLibrary.build(lib)
     val app = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { lib.Container.start(lib.Svc.class); } }"), Seq(v1))
-    Linkage.check(LinkageRequest(java.util.List.of(app), java.util.List.of(ClasspathEntry("lib", Jars.of(v2))), CheckScope.App,
-      java.util.Set.of(), java.util.List.of(), CheckPrecision.METHOD, java.util.Optional.empty[Path](), rules))
+    Linkage.check(
+      LinkageRequest(
+        java.util.List.of(app),
+        java.util.List.of(ClasspathEntry("lib", Jars.of(v2))),
+        CheckScope.App,
+        java.util.Set.of(),
+        java.util.List.of(),
+        CheckPrecision.METHOD,
+        java.util.Optional.empty[Path](),
+        rules
+      )
+    )
 
   test("rules in the request decide what a framework is assumed to call") {
     val withRule = KeepRule.parse(file("keep-members lib.Wired\n")).map(_.asJava).fold(e => fail(e.message), identity)
-    assertEquals(check(withRule).conflicts.asScala.map(c => (c.dependency.fromMethodName, c.label)).toList,
-      List(("go", ConflictLabel.REFLECTIVE)))
-    assertEquals(check(java.util.List.of()).conflicts.asScala.map(c => (c.dependency.fromMethodName, c.label)).toList,
-      List(("go", ConflictLabel.LATENT)))
+    assertEquals(check(withRule).conflicts.asScala.map(c => (c.dependency.fromMethodName, c.label)).toList, List(("go", ConflictLabel.REFLECTIVE)))
+    assertEquals(check(java.util.List.of()).conflicts.asScala.map(c => (c.dependency.fromMethodName, c.label)).toList, List(("go", ConflictLabel.LATENT)))
   }
 
   test("a request without rules uses the standard packs") {
     val (v1, v2) = GoneLibrary.build(lib)
     val app = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { lib.Container.start(lib.Svc.class); } }"), Seq(v1))
-    val request = LinkageRequest(java.util.List.of(app), java.util.List.of(ClasspathEntry("lib", Jars.of(v2))), CheckScope.App,
-      java.util.Set.of(), java.util.List.of(), CheckPrecision.METHOD, java.util.Optional.empty[Path]())
+    val request = LinkageRequest(
+      java.util.List.of(app),
+      java.util.List.of(ClasspathEntry("lib", Jars.of(v2))),
+      CheckScope.App,
+      java.util.Set.of(),
+      java.util.List.of(),
+      CheckPrecision.METHOD,
+      java.util.Optional.empty[Path]()
+    )
     assertEquals(request.keepRules, KeepRule.standard())
   }
 
   test("keep-overrides is a directive, and a rule of that kind reaches the engine as supertypes") {
     val parsed = KeepRule.parse(file("keep-overrides javax.servlet.http.HttpServlet javax.servlet.Filter\n"))
-    assertEquals(parsed.map(_.map(r => (r.kind, names(r)))), Right(List((KeepRuleKind.KEEP_OVERRIDES, List("javax.servlet.http.HttpServlet", "javax.servlet.Filter")))))
+    assertEquals(
+      parsed.map(_.map(r => (r.kind, names(r)))),
+      Right(List((KeepRuleKind.KEEP_OVERRIDES, List("javax.servlet.http.HttpServlet", "javax.servlet.Filter"))))
+    )
     assertEquals(KeepRule.toKeep(parsed.toOption.get.asJava), List(Keep.Overrides(Keep.classNames("javax/servlet/http/HttpServlet", "javax/servlet/Filter"))))
     assertEquals(KeepRule.of(KeepRuleKind.KEEP_OVERRIDES, Nil), Left(Problem.NoNames))
   }
@@ -113,23 +141,38 @@ class KeepRuleSuite extends munit.FunSuite:
   test("an overrides rule in the request makes a subtype's override reachable, end to end through the facade") {
     val handlerLib = Map(
       "lib/Handler.java" -> "package lib; public abstract class Handler { public abstract void handle(); }",
-      "lib/HImpl.java"   -> "package lib; public class HImpl extends Handler { public HImpl() { } public void handle() { Gone.x(); } }")
+      "lib/HImpl.java"   -> "package lib; public class HImpl extends Handler { public HImpl() { } public void handle() { Gone.x(); } }"
+    )
     val (v1, v2) = GoneLibrary.build(handlerLib)
-    val app = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { Object o = lib.HImpl.class; } }"), Seq(v1))
-    def check(rules: java.util.List[KeepRule]) = Linkage.check(LinkageRequest(java.util.List.of(app), java.util.List.of(ClasspathEntry("lib", Jars.of(v2))), CheckScope.App,
-      java.util.Set.of(), java.util.List.of(), CheckPrecision.METHOD, java.util.Optional.empty[Path](), rules))
+    val app      = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { Object o = lib.HImpl.class; } }"), Seq(v1))
+    def check(rules: java.util.List[KeepRule]) = Linkage.check(
+      LinkageRequest(
+        java.util.List.of(app),
+        java.util.List.of(ClasspathEntry("lib", Jars.of(v2))),
+        CheckScope.App,
+        java.util.Set.of(),
+        java.util.List.of(),
+        CheckPrecision.METHOD,
+        java.util.Optional.empty[Path](),
+        rules
+      )
+    )
     def labels(r: LinkageResult) = r.conflicts.asScala.map(c => (c.dependency.fromMethodName, c.label)).toList
-    val rule = KeepRule.of(KeepRuleKind.KEEP_OVERRIDES, List("lib.Handler")).fold(p => fail(p.message), identity)
+    val rule                     = KeepRule.of(KeepRuleKind.KEEP_OVERRIDES, List("lib.Handler")).fold(p => fail(p.message), identity)
     assertEquals(labels(check(java.util.List.of(rule))), List(("handle", ConflictLabel.REFLECTIVE)))
     assertEquals(labels(check(java.util.List.of())), List(("handle", ConflictLabel.LATENT)))
   }
 
   test("keep-bean-arguments names a call as owner.method, and a name without an owner is not one") {
     val parsed = KeepRule.parse(file("keep-bean-arguments com.fasterxml.jackson.databind.ObjectMapper.readValue com.google.gson.Gson.fromJson\n"))
-    assertEquals(parsed.map(_.map(r => (r.kind, names(r)))),
-      Right(List((KeepRuleKind.KEEP_BEAN_ARGUMENTS, List("com.fasterxml.jackson.databind.ObjectMapper.readValue", "com.google.gson.Gson.fromJson")))))
-    assertEquals(KeepRule.toKeep(parsed.toOption.get.asJava),
-      List(Keep.BeanArguments(Keep.callNames("com/fasterxml/jackson/databind/ObjectMapper.readValue", "com/google/gson/Gson.fromJson"))))
+    assertEquals(
+      parsed.map(_.map(r => (r.kind, names(r)))),
+      Right(List((KeepRuleKind.KEEP_BEAN_ARGUMENTS, List("com.fasterxml.jackson.databind.ObjectMapper.readValue", "com.google.gson.Gson.fromJson"))))
+    )
+    assertEquals(
+      KeepRule.toKeep(parsed.toOption.get.asJava),
+      List(Keep.BeanArguments(Keep.callNames("com/fasterxml/jackson/databind/ObjectMapper.readValue", "com/google/gson/Gson.fromJson")))
+    )
     assertEquals(KeepRule.of(KeepRuleKind.KEEP_BEAN_ARGUMENTS, List("readValue")), Left(Problem.InvalidName("readValue")))
     assert(KeepRule.of(KeepRuleKind.KEEP_BEAN_ARGUMENTS, List("a.B.c")).isRight)
   }
@@ -151,12 +194,18 @@ class KeepRuleSuite extends munit.FunSuite:
     assert(byKind(KeepRuleKind.KEEP_BUILT_ARGUMENTS).contains("com.google.gson.Gson.fromJson"))
     assert(byKind(KeepRuleKind.FOLLOW_CLASS_VALUES).contains("com.google.gson.annotations.JsonAdapter"))
     val overrides = byKind(KeepRuleKind.KEEP_OVERRIDES)
-    assert(Set("javax.servlet.Servlet", "javax.servlet.Filter", "jakarta.servlet.Servlet", "jakarta.servlet.http.HttpSessionListener").subsetOf(overrides), overrides.toString)
+    assert(
+      Set("javax.servlet.Servlet", "javax.servlet.Filter", "jakarta.servlet.Servlet", "jakarta.servlet.http.HttpSessionListener").subsetOf(overrides),
+      overrides.toString
+    )
   }
 
   test("keep-classes-named-in names files, which keep their dots, and is not part of the standard packs") {
     val parsed = KeepRule.parse(file("keep-classes-named-in reference.conf META-INF/persistence.xml\n"))
-    assertEquals(parsed.map(_.map(r => (r.kind, names(r)))), Right(List((KeepRuleKind.KEEP_CLASSES_NAMED_IN, List("reference.conf", "META-INF/persistence.xml")))))
+    assertEquals(
+      parsed.map(_.map(r => (r.kind, names(r)))),
+      Right(List((KeepRuleKind.KEEP_CLASSES_NAMED_IN, List("reference.conf", "META-INF/persistence.xml"))))
+    )
     assertEquals(KeepRule.toKeep(parsed.toOption.get.asJava), List(Keep.ClassesNamedIn(Keep.fileNames("reference.conf", "META-INF/persistence.xml"))))
     assertEquals(KeepRule.of(KeepRuleKind.KEEP_CLASSES_NAMED_IN, List("/etc/x.conf")), Left(Problem.InvalidName("/etc/x.conf")))
     assertEquals(KeepRule.of(KeepRuleKind.KEEP_CLASSES_NAMED_IN, Nil), Left(Problem.NoNames))
@@ -181,8 +230,8 @@ class KeepRuleSuite extends munit.FunSuite:
     // The engine's rules and the facade's kinds are in step: a new case of either without the other fails here.
     assertEquals(caseCount[Keep], kinds.size, "a kind per engine rule")
     kinds.foreach: kind =>
-      val form  = RuleKinds.describe(kind).form
-      val rule  = KeepRule.of(kind, List(sampleName(form)))
+      val form = RuleKinds.describe(kind).form
+      val rule = KeepRule.of(kind, List(sampleName(form)))
       assert(rule.isRight, s"$kind rejects a well formed ${form}: $rule")
       val keeps = KeepRule.toKeep(java.util.List.of(rule.toOption.get))
       assertEquals(keeps.flatMap(RuleKinds.kindOf).map(_._1), List(kind), s"$kind reads back as itself")
@@ -203,23 +252,42 @@ class KeepRuleSuite extends munit.FunSuite:
   }
 
   test("keep-constructors and requires-classes are directives over annotation classes") {
-    val parsed = KeepRule.parse(file("keep-constructors org.springframework.stereotype.Component\nrequires-classes org.springframework.boot.autoconfigure.condition.ConditionalOnClass\n"))
-    assertEquals(parsed.map(_.map(r => (r.kind, names(r)))), Right(List(
-      (KeepRuleKind.KEEP_CONSTRUCTORS, List("org.springframework.stereotype.Component")),
-      (KeepRuleKind.REQUIRES_CLASSES, List("org.springframework.boot.autoconfigure.condition.ConditionalOnClass")))))
-    assertEquals(KeepRule.toKeep(parsed.toOption.get.asJava), List(
-      Keep.Constructors(Keep.classNames("org/springframework/stereotype/Component")),
-      Keep.RequiresClasses(Keep.classNames("org/springframework/boot/autoconfigure/condition/ConditionalOnClass"))))
+    val parsed = KeepRule.parse(
+      file("keep-constructors org.springframework.stereotype.Component\nrequires-classes org.springframework.boot.autoconfigure.condition.ConditionalOnClass\n")
+    )
+    assertEquals(
+      parsed.map(_.map(r => (r.kind, names(r)))),
+      Right(
+        List(
+          (KeepRuleKind.KEEP_CONSTRUCTORS, List("org.springframework.stereotype.Component")),
+          (KeepRuleKind.REQUIRES_CLASSES, List("org.springframework.boot.autoconfigure.condition.ConditionalOnClass"))
+        )
+      )
+    )
+    assertEquals(
+      KeepRule.toKeep(parsed.toOption.get.asJava),
+      List(
+        Keep.Constructors(Keep.classNames("org/springframework/stereotype/Component")),
+        Keep.RequiresClasses(Keep.classNames("org/springframework/boot/autoconfigure/condition/ConditionalOnClass"))
+      )
+    )
     assert(KeepRule.standard().asScala.exists(_.kind == KeepRuleKind.KEEP_CONSTRUCTORS))
     assert(KeepRule.standard().asScala.exists(_.kind == KeepRuleKind.REQUIRES_CLASSES))
   }
 
   test("keep-constructed-arguments is a directive with owner.method names, and the Akka and Pekko packs are in the standard rules") {
     val parsed = KeepRule.parse(file("keep-constructed-arguments org.apache.pekko.actor.Props.create\n"))
-    assertEquals(parsed.map(_.map(r => (r.kind, names(r)))), Right(List((KeepRuleKind.KEEP_CONSTRUCTED_ARGUMENTS, List("org.apache.pekko.actor.Props.create")))))
+    assertEquals(
+      parsed.map(_.map(r => (r.kind, names(r)))),
+      Right(List((KeepRuleKind.KEEP_CONSTRUCTED_ARGUMENTS, List("org.apache.pekko.actor.Props.create"))))
+    )
     assertEquals(KeepRule.toKeep(parsed.toOption.get.asJava), List(Keep.ConstructedArguments(Keep.callNames("org/apache/pekko/actor/Props.create"))))
     assertEquals(KeepRule.of(KeepRuleKind.KEEP_CONSTRUCTED_ARGUMENTS, List("create")), Left(Problem.InvalidName("create")))
     val standard = KeepRule.standard().asScala.filter(_.kind == KeepRuleKind.KEEP_CONSTRUCTED_ARGUMENTS).flatMap(_.names.asScala).toSet
-    assert(Set("akka.actor.Props.create", "akka.actor.Props$.apply", "org.apache.pekko.actor.Props.create", "org.apache.pekko.actor.Props$.apply").subsetOf(standard), standard.toString)
+    assert(
+      Set("akka.actor.Props.create", "akka.actor.Props$.apply", "org.apache.pekko.actor.Props.create", "org.apache.pekko.actor.Props$.apply").subsetOf(
+        standard
+      ),
+      standard.toString
+    )
   }
-

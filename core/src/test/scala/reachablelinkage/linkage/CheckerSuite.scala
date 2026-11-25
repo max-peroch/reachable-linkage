@@ -12,8 +12,8 @@ class CheckerSuite extends munit.FunSuite:
 
   /** Checks app (source 0) against the libs and the JDK; returns rendered conflicts. */
   private def run(app: ClassSource, libs: ClassSource*): List[String] =
-    val syms  = new Symbols
-    val index = ClassIndex(app +: (libs :+ ClassSource.jdk()).toIndexedSeq, syms)
+    val syms   = new Symbols
+    val index  = ClassIndex(app +: (libs :+ ClassSource.jdk()).toIndexedSeq, syms)
     val libIdx = 1 to libs.length
     Checker.check(index, Scopes.of(index, Vector(0), Vector(0), Vector(0) ++ libIdx)).map(_.show(syms)).toList
 
@@ -43,8 +43,11 @@ class CheckerSuite extends munit.FunSuite:
   test("a method inherited from a superinterface resolves") {
     val app = source(cls("app/Main", methods = Seq(calling("run")(invokeVirtual("lib/Impl", "hi", "()V")))))
     val lib = source(
-      cls("lib/Api", access = Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT,
-        methods = Seq(("hi", "()V", Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT, None))),
+      cls(
+        "lib/Api",
+        access = Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT,
+        methods = Seq(("hi", "()V", Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT, None))
+      ),
       cls("lib/Impl", access = Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT, itfs = Seq("lib/Api"))
     )
     assertEquals(run(app, lib), Nil)

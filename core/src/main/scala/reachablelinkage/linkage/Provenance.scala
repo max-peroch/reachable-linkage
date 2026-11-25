@@ -2,17 +2,16 @@ package reachablelinkage.linkage
 
 import java.util.BitSet
 
-/**
- * How each class and method of the call graph was first reached. The walk runs in phases, one per [[Reach]] in order of strength: the
- * direct roots first, then what only a rule makes a root, then what only deserialization does. Everything the walk first reaches during
- * a phase is recorded for that phase, so a thing reached by several kinds of root has the strongest, whichever order they were found in
- * (the walk only adds, so a later phase never takes anything from an earlier one).
- */
+/** How each class and method of the call graph was first reached. The walk runs in phases, one per [[Reach]] in order of strength: the direct roots first, then
+  * what only a rule makes a root, then what only deserialization does. Everything the walk first reaches during a phase is recorded for that phase, so a thing
+  * reached by several kinds of root has the strongest, whichever order they were found in (the walk only adds, so a later phase never takes anything from an
+  * earlier one).
+  */
 private[linkage] final class Provenance:
   // `Reach.values` copies its array on every call, so it is read once.
-  private val kinds   = Reach.values
-  private val classes = Array.fill(kinds.length)(new BitSet)
-  private val methods = Array.fill(kinds.length)(new Slots[BitSet])
+  private val kinds          = Reach.values
+  private val classes        = Array.fill(kinds.length)(new BitSet)
+  private val methods        = Array.fill(kinds.length)(new Slots[BitSet])
   private var current: Reach = Reach.Direct
 
   /** The phase the walk is in. */

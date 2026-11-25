@@ -7,16 +7,12 @@ import reachablelinkage.classfile.AccessFlags.*
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.ClassId
 
-/**
- * Who may use what (JVMS 5.4.4). A class is usable from its own package, or from anywhere if public.
- * A public member is usable by everyone; a protected one from its package or a subclass; a
- * package-private one from its package; a private one only within its nest.
- *
- * Where the JVM is more precise, this is more permissive, so it never reports a call that works:
- * the nest is approximated by the outermost class name, and the receiver-type rule for protected
- * access is ignored. Module encapsulation (a public class in an unexported JDK package) is not
- * modelled.
- */
+/** Who may use what (JVMS 5.4.4). A class is usable from its own package, or from anywhere if public. A public member is usable by everyone; a protected one
+  * from its package or a subclass; a package-private one from its package; a private one only within its nest.
+  *
+  * Where the JVM is more precise, this is more permissive, so it never reports a call that works: the nest is approximated by the outermost class name, and the
+  * receiver-type rule for protected access is ignored. Module encapsulation (a public class in an unexported JDK package) is not modelled.
+  */
 private[linkage] final class Access(index: ClassIndex, exportedPackages: Set[String] = Set.empty):
 
   private val syms     = index.syms
@@ -72,7 +68,7 @@ private[linkage] final class Access(index: ClassIndex, exportedPackages: Set[Str
     a == b || (samePackage(a, b) && outerOf(a) == outerOf(b))
 
   private def isSubclass(from: ClassInfo, target: ClassId): Boolean =
-    val seen = new BitSet()
+    val seen                        = new BitSet()
     def visit(id: ClassId): Boolean =
       !id.isNone && !seen.get(id.value) && {
         seen.set(id.value)

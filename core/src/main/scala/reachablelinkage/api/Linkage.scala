@@ -15,29 +15,35 @@ object Linkage:
   private val ProjectName = "project"
   private val Unknown     = "<unknown>"
 
-  /** The classpath entries of a request, opened, with what went wrong with the ones that could not be (the project's first, then the classpath, then the boot entries). */
+  /** The classpath entries of a request, opened, with what went wrong with the ones that could not be (the project's first, then the classpath, then the boot
+    * entries).
+    */
   private final case class Opened(project: List[(String, ClassSource)], classpath: List[(String, ClassSource)], boot: List[ClassSource], errors: List[String])
 
-  /**
-   * Runs the check. It cannot fail: classpath entries that cannot be opened are skipped and reported
-   * in the result's `warnings`, and the rest is a pure function of what was opened.
-   */
+  /** Runs the check. It cannot fail: classpath entries that cannot be opened are skipped and reported in the result's `warnings`, and the rest is a pure
+    * function of what was opened.
+    */
   def check(request: LinkageRequest): LinkageResult =
     val toClose = ArrayBuffer.empty[ClassSource]
     // The try starts before anything is opened, so a failure at any step still closes what was.
     try checkOpened(request, openEntries(request, toClose))
-    finally toClose.foreach(source => try source.close() catch case NonFatal(_) => ())  // one that fails to close must not hide the others
+    finally
+      toClose.foreach(source =>
+        try source.close()
+        catch case NonFatal(_) => ()
+      ) // one that fails to close must not hide the others
 
   private def openEntries(request: LinkageRequest, toClose: ArrayBuffer[ClassSource]): Opened =
-    val cacheDirectory = request.cacheDirectory.toScala
+    val cacheDirectory                                                                                 = request.cacheDirectory.toScala
     def open(entries: List[(String, java.nio.file.Path)]): (List[String], List[(String, ClassSource)]) =
-      val (errors, opened) = entries.map((name, path) => ClassSource.open(path, cacheDirectory, request.javaRelease).map(name -> _).left.map(_.message)).partitionMap(identity)
+      val (errors, opened) =
+        entries.map((name, path) => ClassSource.open(path, cacheDirectory, request.javaRelease).map(name -> _).left.map(_.message)).partitionMap(identity)
       toClose ++= opened.map(_._2)
       (errors, opened)
 
     val (projectErrors, project)     = open(request.projectClasses.asScala.toList.map(ProjectName -> _))
     val (classpathErrors, classpath) = open(request.classpath.asScala.toList.map(e => e.name -> e.path))
-    val (bootErrors, bootEntries) = request.bootClasspath.asScala.toList.map(path => ClassSource.open(path).left.map(_.message)).partitionMap(identity)
+    val (bootErrors, bootEntries)    = request.bootClasspath.asScala.toList.map(path => ClassSource.open(path).left.map(_.message)).partitionMap(identity)
     toClose ++= bootEntries
     // Without boot entries of its own, the request is checked against the running JDK.
     val boot = if bootEntries.nonEmpty then bootEntries else ClassSource.runningJdk(cacheDirectory).tap(toClose ++= _)
@@ -53,9 +59,13 @@ object Linkage:
     val names   = sources.map(_._1).toVector
     val checked = names.indices.filterNot(i => request.excludedEntries.contains(names(i))).toVector
     // Reachability is always measured from the project's own classes, even when every class is scanned.
-    val scope = Scope.over(index, rootsOf(request.scope, projectCount, checked), checked, (0 until traversableCount).toVector, (0 until projectCount).toVector)
-    val loaded   = request.loadedClasses.asScala.iterator.map(_.replace('.', '/')).toSet
-    val findings = Checker.findings(index, scope, CheckOptions(precisionOf(request.precision), KeepRule.toKeep(request.keepRules), loaded, request.exportedPackages.asScala.toSet))
+    val scope  = Scope.over(index, rootsOf(request.scope, projectCount, checked), checked, (0 until traversableCount).toVector, (0 until projectCount).toVector)
+    val loaded = request.loadedClasses.asScala.iterator.map(_.replace('.', '/')).toSet
+    val findings = Checker.findings(
+      index,
+      scope,
+      CheckOptions(precisionOf(request.precision), KeepRule.toKeep(request.keepRules), loaded, request.exportedPackages.asScala.toSet)
+    )
     def onClasspath(name: String): Boolean =
       val c = index.syms.findClass(name)
       !c.isNone && index.exists(c) && index.sourceIndex(c) < traversableCount
@@ -88,21 +98,21 @@ object Linkage:
 
   /** The facade's name for a category, checked by the compiler: a category without one does not compile, and nothing is looked up by name. */
   private def categoryOf(c: Category): ConflictCategory = c match
-    case Category.CLASS_NOT_FOUND                  => ConflictCategory.CLASS_NOT_FOUND
-    case Category.METHOD_SIGNATURE_NOT_FOUND       => ConflictCategory.METHOD_SIGNATURE_NOT_FOUND
-    case Category.FIELD_NOT_FOUND                  => ConflictCategory.FIELD_NOT_FOUND
-    case Category.UNREADABLE_CLASS                 => ConflictCategory.UNREADABLE_CLASS
-    case Category.MISSING_PROVIDER                 => ConflictCategory.MISSING_PROVIDER
-    case Category.INACCESSIBLE_CLASS               => ConflictCategory.INACCESSIBLE_CLASS
-    case Category.INACCESSIBLE_MEMBER              => ConflictCategory.INACCESSIBLE_MEMBER
-    case Category.ABSTRACT_METHOD_NOT_IMPLEMENTED  => ConflictCategory.ABSTRACT_METHOD_NOT_IMPLEMENTED
-    case Category.INCOMPATIBLE_HIERARCHY           => ConflictCategory.INCOMPATIBLE_HIERARCHY
-    case Category.OVERRIDES_FINAL_METHOD           => ConflictCategory.OVERRIDES_FINAL_METHOD
-    case Category.INTERFACE_CLASS_MISMATCH         => ConflictCategory.INTERFACE_CLASS_MISMATCH
-    case Category.ABSTRACT_INSTANTIATION           => ConflictCategory.ABSTRACT_INSTANTIATION
-    case Category.FINAL_FIELD_WRITE                => ConflictCategory.FINAL_FIELD_WRITE
-    case Category.MISSING_SIGNATURE_TYPE           => ConflictCategory.MISSING_SIGNATURE_TYPE
-    case Category.NOT_EXPORTED                     => ConflictCategory.NOT_EXPORTED
+    case Category.CLASS_NOT_FOUND                 => ConflictCategory.CLASS_NOT_FOUND
+    case Category.METHOD_SIGNATURE_NOT_FOUND      => ConflictCategory.METHOD_SIGNATURE_NOT_FOUND
+    case Category.FIELD_NOT_FOUND                 => ConflictCategory.FIELD_NOT_FOUND
+    case Category.UNREADABLE_CLASS                => ConflictCategory.UNREADABLE_CLASS
+    case Category.MISSING_PROVIDER                => ConflictCategory.MISSING_PROVIDER
+    case Category.INACCESSIBLE_CLASS              => ConflictCategory.INACCESSIBLE_CLASS
+    case Category.INACCESSIBLE_MEMBER             => ConflictCategory.INACCESSIBLE_MEMBER
+    case Category.ABSTRACT_METHOD_NOT_IMPLEMENTED => ConflictCategory.ABSTRACT_METHOD_NOT_IMPLEMENTED
+    case Category.INCOMPATIBLE_HIERARCHY          => ConflictCategory.INCOMPATIBLE_HIERARCHY
+    case Category.OVERRIDES_FINAL_METHOD          => ConflictCategory.OVERRIDES_FINAL_METHOD
+    case Category.INTERFACE_CLASS_MISMATCH        => ConflictCategory.INTERFACE_CLASS_MISMATCH
+    case Category.ABSTRACT_INSTANTIATION          => ConflictCategory.ABSTRACT_INSTANTIATION
+    case Category.FINAL_FIELD_WRITE               => ConflictCategory.FINAL_FIELD_WRITE
+    case Category.MISSING_SIGNATURE_TYPE          => ConflictCategory.MISSING_SIGNATURE_TYPE
+    case Category.NOT_EXPORTED                    => ConflictCategory.NOT_EXPORTED
 
   private def dot(internal: String): String = internal.replace('/', '.')
 
@@ -119,8 +129,14 @@ object Linkage:
     LinkageConflict(
       categoryOf(d.category),
       Dependency(
-        dot(from), loc.methodName, loc.methodDescriptor, loc.line, dot(syms.className(d.target)),
-        d.member.fold("")((n, _) => syms.name(n)), d.member.fold("")((_, desc) => syms.desc(desc))),
+        dot(from),
+        loc.methodName,
+        loc.methodDescriptor,
+        loc.line,
+        dot(syms.className(d.target)),
+        d.member.fold("")((n, _) => syms.name(n)),
+        d.member.fold("")((_, desc) => syms.desc(desc))
+      ),
       // A missing provider belongs to the entry that ships the stale service file, not to the interface's.
       d.declaredIn.fold(entryOf(d.from))(entryNames),
       d.existsIn.fold(Unknown)(entryOf),

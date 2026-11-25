@@ -6,27 +6,25 @@ import java.util.Properties
 
 import reachablelinkage.classpath.ClassSource
 
-/**
- * Compiles Scala sources in-process. Each compiler lives in its own classloader whose parent is the
- * platform loader, so 2.12 and 2.13 libraries never meet our own Scala 3 classpath. The compiler
- * classpaths come from the build (see `scala-compilers.properties`).
- */
+/** Compiles Scala sources in-process. Each compiler lives in its own classloader whose parent is the platform loader, so 2.12 and 2.13 libraries never meet our
+  * own Scala 3 classpath. The compiler classpaths come from the build (see `scala-compilers.properties`).
+  */
 object ScalaFixture:
 
   private lazy val classpaths: Properties =
     val props = new Properties()
     val in    = getClass.getResourceAsStream("/scala-compilers.properties")
     require(in != null, "scala-compilers.properties missing: run the tests through sbt")
-    try props.load(in) finally in.close()
+    try props.load(in)
+    finally in.close()
     props
 
   private def entries(v: ScalaVersion): Seq[Path] =
     classpaths.getProperty(v.key).split(java.io.File.pathSeparator).toSeq.map(Paths.get(_))
 
-  private val loaders = new java.util.concurrent.ConcurrentHashMap[ScalaVersion, ClassLoader]()
+  private val loaders                              = new java.util.concurrent.ConcurrentHashMap[ScalaVersion, ClassLoader]()
   private def loader(v: ScalaVersion): ClassLoader =
-    loaders.computeIfAbsent(v, _ =>
-      new URLClassLoader(entries(v).map(_.toUri.toURL).toArray[URL], ClassLoader.getPlatformClassLoader))
+    loaders.computeIfAbsent(v, _ => new URLClassLoader(entries(v).map(_.toUri.toURL).toArray[URL], ClassLoader.getPlatformClassLoader))
 
   /** The Scala standard library jars fixtures compile against, and which the app runs with. */
   def library(v: ScalaVersion): Seq[Path] =
@@ -50,8 +48,7 @@ object ScalaFixture:
         if v.isScala3 then
           val reporter = invokeMain(cl, "dotty.tools.dotc.Main$", (args ++ files).toArray)
           !reporter.getClass.getMethod("hasErrors").invoke(reporter).asInstanceOf[Boolean]
-        else
-          invokeMain(cl, "scala.tools.nsc.Main$", (args ++ files).toArray).asInstanceOf[Boolean]
+        else invokeMain(cl, "scala.tools.nsc.Main$", (args ++ files).toArray).asInstanceOf[Boolean]
     require(ok, s"scalac $v failed; compiler output is above")
     out
 
@@ -65,7 +62,8 @@ object ScalaFixture:
     val t   = Thread.currentThread
     val old = t.getContextClassLoader
     t.setContextClassLoader(cl)
-    try body finally t.setContextClassLoader(old)
+    try body
+    finally t.setContextClassLoader(old)
 
-  def source(dir: Path): ClassSource = JavaFixture.source(dir)
+  def source(dir: Path): ClassSource                    = JavaFixture.source(dir)
   def librarySources(v: ScalaVersion): Seq[ClassSource] = library(v).map(JavaFixture.source)

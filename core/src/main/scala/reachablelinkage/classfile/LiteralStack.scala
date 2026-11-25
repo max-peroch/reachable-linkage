@@ -1,17 +1,15 @@
 package reachablelinkage.classfile
 
-/**
- * The class literals (`Foo.class`) that are still on the operand stack, and how deep, so that a call can tell which of them are its arguments:
- * `Props.create(Worker.class, a, b)` has the literal under two more values, and `register(A.class, B.class)` has them in a varargs array.
- *
- * Every instruction between the literal and the call reports how many values it pops and pushes; a literal that is popped by something that
- * is not a call is gone, one under the popped values only moves down. Whatever cannot be followed exactly (a `long` or `double` stack
- * operation, `swap`, `dup_x1`, a jump or a label) forgets everything, so a mistake can lose a literal and never invent one.
- * Values count one each, whatever their size in slots.
- */
+/** The class literals (`Foo.class`) that are still on the operand stack, and how deep, so that a call can tell which of them are its arguments:
+  * `Props.create(Worker.class, a, b)` has the literal under two more values, and `register(A.class, B.class)` has them in a varargs array.
+  *
+  * Every instruction between the literal and the call reports how many values it pops and pushes; a literal that is popped by something that is not a call is
+  * gone, one under the popped values only moves down. Whatever cannot be followed exactly (a `long` or `double` stack operation, `swap`, `dup_x1`, a jump or a
+  * label) forgets everything, so a mistake can lose a literal and never invent one. Values count one each, whatever their size in slots.
+  */
 private[classfile] final class LiteralStack:
   private var classes = new Array[Int](4)
-  private var depths  = new Array[Int](4)   // 1 is the top of the stack
+  private var depths  = new Array[Int](4) // 1 is the top of the stack
   private var n       = 0
 
   def isEmpty: Boolean = n == 0
@@ -35,10 +33,9 @@ private[classfile] final class LiteralStack:
         i += 1
       n = kept
 
-  /**
-   * `dup`: the top value is copied. What was under it goes one deeper, and a literal that is the top is now also the value under the copy
-   * (`new Class[] { A.class, B.class }` duplicates the array that carries the literals before each store, and the store pops the copy).
-   */
+  /** `dup`: the top value is copied. What was under it goes one deeper, and a literal that is the top is now also the value under the copy (`new Class[] {
+    * A.class, B.class }` duplicates the array that carries the literals before each store, and the store pops the copy).
+    */
   def dup(): Unit =
     val before = n
     var i      = 0
@@ -47,14 +44,12 @@ private[classfile] final class LiteralStack:
       i += 1
     i = 0
     while i < before do
-      if depths(i) == 1 then
-        add(classes(i), 2)
+      if depths(i) == 1 then add(classes(i), 2)
       i += 1
 
-  /**
-   * `aastore` (pops the array, the index and the value): a literal that is the value now rides in the array that stays on the stack
-   * (`new Class[] { A.class }`); the others lose the three values.
-   */
+  /** `aastore` (pops the array, the index and the value): a literal that is the value now rides in the array that stays on the stack (`new Class[] { A.class
+    * }`); the others lose the three values.
+    */
   def arrayStore(): Unit =
     var kept = 0
     var i    = 0
@@ -65,14 +60,13 @@ private[classfile] final class LiteralStack:
       i += 1
     n = kept
 
-  /**
-   * A call that pops `pops` values (its arguments, and its receiver if it has one) and pushes `pushes`. `record` is told the class of each literal
-   * that was one of the values it popped; those leave the stack, and the rest move down.
-   *
-   * With `carry`, the call's result stands for what it was given: `ClassTag.apply(Worker.class)` is a `ClassTag` of `Worker`, `typeFactory.constructType(Dto.class)`
-   * a `JavaType` of `Dto`, `new Box(Foo.class)` a box of `Foo`. The literals it popped ride on the result, so the call that takes the result is told of them too. This
-   * over-approximates (a result need not be about its argument), which a rule's choice of calls bounds.
-   */
+  /** A call that pops `pops` values (its arguments, and its receiver if it has one) and pushes `pushes`. `record` is told the class of each literal that was
+    * one of the values it popped; those leave the stack, and the rest move down.
+    *
+    * With `carry`, the call's result stands for what it was given: `ClassTag.apply(Worker.class)` is a `ClassTag` of `Worker`,
+    * `typeFactory.constructType(Dto.class)` a `JavaType` of `Dto`, `new Box(Foo.class)` a box of `Foo`. The literals it popped ride on the result, so the call
+    * that takes the result is told of them too. This over-approximates (a result need not be about its argument), which a rule's choice of calls bounds.
+    */
   def call(pops: Int, pushes: Int, carry: Boolean)(record: Int => Unit): Unit =
     var carried = List.empty[Int]
     var i       = 0

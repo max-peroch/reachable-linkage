@@ -2,11 +2,9 @@ package reachablelinkage.linkage
 
 import scala.annotation.tailrec
 
-/**
- * Open-addressing table from (owner, member key, kind) to a lookup result. Replaces a
- * `HashMap[(Int, Long, Int), _]` that allocated a tuple and boxed two values on every lookup.
- * Not thread-safe.
- */
+/** Open-addressing table from (owner, member key, kind) to a lookup result. Replaces a `HashMap[(Int, Long, Int), _]` that allocated a tuple and boxed two
+  * values on every lookup. Not thread-safe.
+  */
 private[linkage] final class ResolutionMemo:
   private var mask   = 1023
   private var size   = 0

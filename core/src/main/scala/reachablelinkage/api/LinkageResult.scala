@@ -2,10 +2,9 @@ package reachablelinkage.api
 
 import scala.jdk.CollectionConverters.*
 
-/**
- * `warnings` lists classpath entries that could not be opened; they are skipped. `entries` lists the
- * entries that were checked, in classpath order, so a later run can tell which dependencies changed.
- */
+/** `warnings` lists classpath entries that could not be opened; they are skipped. `entries` lists the entries that were checked, in classpath order, so a later
+  * run can tell which dependencies changed.
+  */
 final case class LinkageResult(
     conflicts: java.util.List[LinkageConflict],
     warnings: java.util.List[String],
@@ -16,10 +15,9 @@ final case class LinkageResult(
   /** How many conflicts there were before the package filters ran. */
   def conflictsBeforeFilters: Int = conflicts.size + filtered.asScala.map(_.removed).sum
 
-  /**
-   * The conflicts of the categories missinglink-core reports (see [[ConflictCategory.reportedByMissinglink]]): what an existing build
-   * saw, for a plugin in compatibility mode.
-   */
+  /** The conflicts of the categories missinglink-core reports (see [[ConflictCategory.reportedByMissinglink]]): what an existing build saw, for a plugin in
+    * compatibility mode.
+    */
   def missinglinkReports(): java.util.List[LinkageConflict] =
     conflicts.asScala.filter(_.category.reportedByMissinglink).toList.asJava
 

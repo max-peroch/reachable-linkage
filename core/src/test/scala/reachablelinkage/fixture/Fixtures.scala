@@ -8,10 +8,10 @@ import reachablelinkage.classpath.ClassSource
 /** Builds tiny class files in memory so tests do not need a compiler. */
 object Fixtures:
   final class MemorySource(classes: Map[String, Array[Byte]]) extends ClassSource:
-    val origin: Path                                   = Paths.get("memory")
-    def classNames: Iterator[String]                   = classes.keysIterator
-    def read(n: String): Option[Array[Byte]]           = classes.get(n)
-    def close(): Unit                                  = ()
+    val origin: Path                         = Paths.get("memory")
+    def classNames: Iterator[String]         = classes.keysIterator
+    def read(n: String): Option[Array[Byte]] = classes.get(n)
+    def close(): Unit                        = ()
 
   type Body = MethodVisitor => Unit
 

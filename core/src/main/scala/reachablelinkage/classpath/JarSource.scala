@@ -13,8 +13,8 @@ private[classpath] final class JarSource(val origin: Path, cacheDirectory: Optio
   private val jar = new JarFile(origin.toFile)
 
   // The entry each class comes from, for a JVM running Java `release` (see JarEntries): a multi-release jar's overlays count.
-  private lazy val resolved: Vector[(String, JarEntry)]   = JarEntries.resolve(jar, release)
-  private lazy val entryOf: Map[String, JarEntry]         = resolved.toMap
+  private lazy val resolved: Vector[(String, JarEntry)] = JarEntries.resolve(jar, release)
+  private lazy val entryOf: Map[String, JarEntry]       = resolved.toMap
 
   def classNames: Iterator[String] = resolved.iterator.map(_._1)
 

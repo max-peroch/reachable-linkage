@@ -6,11 +6,12 @@ enum ClassFileError:
   case Unavailable
   case Truncated
   case UnsupportedVersion(major: Int)
+
   /** ASM rejected the bytes; `detail` is its message. */
   case Malformed(detail: String)
 
   def message: String = this match
-    case Unavailable            => "listed but unreadable"
-    case Truncated              => "truncated class file"
-    case UnsupportedVersion(v)  => s"unsupported class file version $v"
-    case Malformed(detail)      => s"malformed class file: $detail"
+    case Unavailable           => "listed but unreadable"
+    case Truncated             => "truncated class file"
+    case UnsupportedVersion(v) => s"unsupported class file version $v"
+    case Malformed(detail)     => s"malformed class file: $detail"

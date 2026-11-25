@@ -11,11 +11,12 @@ class MetaAnnotationsSuite extends munit.FunSuite:
     "lib/Imports.java" -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) public @interface Imports { Class<?> value(); }",
     "lib/X.java"       -> "package lib; public class X { }",
     // `A` names X itself and is annotated with `B`; `B` is annotated with `A`: a cycle.
-    "lib/A.java"       -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) @B @Imports(X.class) public @interface A { }",
-    "lib/B.java"       -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) @A public @interface B { }",
-    "lib/UsesA.java"   -> "package lib; @A public class UsesA { }",
-    "lib/UsesB.java"   -> "package lib; @B public class UsesB { }",
-    "lib/Plain.java"   -> "package lib; public class Plain { }")
+    "lib/A.java"     -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) @B @Imports(X.class) public @interface A { }",
+    "lib/B.java"     -> "package lib; import java.lang.annotation.*; @Retention(RetentionPolicy.RUNTIME) @A public @interface B { }",
+    "lib/UsesA.java" -> "package lib; @A public class UsesA { }",
+    "lib/UsesB.java" -> "package lib; @B public class UsesB { }",
+    "lib/Plain.java" -> "package lib; public class Plain { }"
+  )
 
   private def followedBy(rules: KeepRules, index: ClassIndex, holder: String): Set[String] =
     val info  = index.get(index.syms.classId(holder)).nn

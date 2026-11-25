@@ -1,18 +1,32 @@
 package reachablelinkage.api
 
-/**
- * Readable names for what the Scala compilers generate, for reports only (the conflicts keep the raw names).
- * `Foo$` is `object Foo`, `$anonfun$bar$1` an anonymous function in `bar`, `foo$extension` an extension method of a
- * value class, `$plus` is `+`. Java's `lambda$run$0` gets the same treatment. A name that matches nothing is
- * returned as it is, so Java code is untouched.
- */
+/** Readable names for what the Scala compilers generate, for reports only (the conflicts keep the raw names). `Foo$` is `object Foo`, `$anonfun$bar$1` an
+  * anonymous function in `bar`, `foo$extension` an extension method of a value class, `$plus` is `+`. Java's `lambda$run$0` gets the same treatment. A name
+  * that matches nothing is returned as it is, so Java code is untouched.
+  */
 private[api] object ScalaNames:
   private val operators: List[(String, String)] = List(
-    "$plus" -> "+", "$minus" -> "-", "$times" -> "*", "$div" -> "/", "$eq" -> "=", "$less" -> "<", "$greater" -> ">",
-    "$bang" -> "!", "$hash" -> "#", "$percent" -> "%", "$up" -> "^", "$amp" -> "&", "$bar" -> "|", "$tilde" -> "~",
-    "$qmark" -> "?", "$colon" -> ":", "$bslash" -> "\\", "$at" -> "@")
+    "$plus"    -> "+",
+    "$minus"   -> "-",
+    "$times"   -> "*",
+    "$div"     -> "/",
+    "$eq"      -> "=",
+    "$less"    -> "<",
+    "$greater" -> ">",
+    "$bang"    -> "!",
+    "$hash"    -> "#",
+    "$percent" -> "%",
+    "$up"      -> "^",
+    "$amp"     -> "&",
+    "$bar"     -> "|",
+    "$tilde"   -> "~",
+    "$qmark"   -> "?",
+    "$colon"   -> ":",
+    "$bslash"  -> "\\",
+    "$at"      -> "@"
+  )
 
-  private val AnonFun   = """^\$anonfun\$(.*?)(?:\$\d+)+(?:\$adapted)?$""".r
+  private val AnonFun = """^\$anonfun\$(.*?)(?:\$\d+)+(?:\$adapted)?$""".r
   // Scala 3 names a lambda after its method: `bar$$anonfun$1`.
   private val AnonFun3  = """^(.+?)\$\$anonfun\$\d+(?:\$adapted)?$""".r
   private val Lambda    = """^lambda\$(.*?)\$\d+$""".r

@@ -1,16 +1,18 @@
 package reachablelinkage.api
 
-/**
- * How the names of a rule are written. The facade writes them the way a user does (`a.b.Name`); the engine wants internal names (`a/b/Name`) for classes,
- * and the other forms as they are. One case per form, so what a kind's names look like, whether they are valid and how they cross over is said once.
- */
+/** How the names of a rule are written. The facade writes them the way a user does (`a.b.Name`); the engine wants internal names (`a/b/Name`) for classes, and
+  * the other forms as they are. One case per form, so what a kind's names look like, whether they are valid and how they cross over is said once.
+  */
 private[api] enum NameForm:
   /** Class names: `a.b.Name` in the facade, `a/b/Name` in the engine. */
   case ClassNames
+
   /** Calls, `owner.method`: the owner is a class name, the method follows the last dot. */
   case CallNames
+
   /** File names or the end of a path (`reference.conf`, `META-INF/spring.factories`): kept as they are, since a dot is not a package separator. */
   case FileNames
+
   /** Suffixes added to a class name (`_$logger`): kept as they are. */
   case SuffixNames
 
@@ -23,14 +25,14 @@ private[api] enum NameForm:
 
   /** The names as the engine wants them. */
   def toEngine(names: List[String]): Set[String] = this match
-    case ClassNames                => names.map(_.replace('.', '/')).toSet
-    case CallNames                 => names.map(NameForm.callToEngine).toSet
-    case FileNames | SuffixNames   => names.toSet
+    case ClassNames              => names.map(_.replace('.', '/')).toSet
+    case CallNames               => names.map(NameForm.callToEngine).toSet
+    case FileNames | SuffixNames => names.toSet
 
   /** The names as the facade shows them, sorted so that a rule reads the same every time. */
   def toFacade(names: Set[String]): List[String] = this match
-    case ClassNames | CallNames    => names.toList.sorted.map(_.replace('/', '.'))
-    case FileNames | SuffixNames   => names.toList.sorted
+    case ClassNames | CallNames  => names.toList.sorted.map(_.replace('/', '.'))
+    case FileNames | SuffixNames => names.toList.sorted
 
 private[api] object NameForm:
   /** Does `owner.method` have an owner, that is, a dot that is not the first character? */

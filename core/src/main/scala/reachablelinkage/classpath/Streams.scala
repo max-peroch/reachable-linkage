@@ -11,7 +11,8 @@ private[reachablelinkage] object Streams:
 
   private def readExactly(in: InputStream, size: Int): Array[Byte] =
     val bytes = new Array[Byte](size)
-    @scala.annotation.tailrec def fill(read: Int): Int =
+    @scala.annotation.tailrec
+    def fill(read: Int): Int =
       if read == size then read
       else
         val n = in.read(bytes, read, size - read)
@@ -23,7 +24,8 @@ private[reachablelinkage] object Streams:
   private def readUntilEnd(in: InputStream): Array[Byte] =
     val out    = new ByteArrayOutputStream()
     val buffer = new Array[Byte](8192)
-    @scala.annotation.tailrec def copy(): Unit =
+    @scala.annotation.tailrec
+    def copy(): Unit =
       val n = in.read(buffer)
       if n >= 0 then
         out.write(buffer, 0, n)

@@ -3,10 +3,9 @@ package reachablelinkage.classpath
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
 
-/**
- * The on-disk JDK listing is an optimisation and must never change an answer: whatever is wrong with
- * it, a check still sees exactly the classes the running JDK has.
- */
+/** The on-disk JDK listing is an optimisation and must never change an answer: whatever is wrong with it, a check still sees exactly the classes the running
+  * JDK has.
+  */
 class JdkListingSuite extends munit.FunSuite:
 
   private def freshDir(): Path = Files.createTempDirectory("jdk-listing")
@@ -14,7 +13,8 @@ class JdkListingSuite extends munit.FunSuite:
 
   private def cacheFiles(dir: Path): List[Path] =
     val s = Files.list(dir)
-    try s.iterator.asScala.toList finally s.close()
+    try s.iterator.asScala.toList
+    finally s.close()
 
   private def names(src: ClassSource): Set[String] = src.classNames.toSet
 
@@ -32,9 +32,9 @@ class JdkListingSuite extends munit.FunSuite:
   }
 
   test("a second load really reads the file: a doctored file shows through") {
-    val dir  = freshDir()
-    val real = JdkListing.list()
-    val file = dir.resolve(JdkListing.fileName(key))
+    val dir      = freshDir()
+    val real     = JdkListing.list()
+    val file     = dir.resolve(JdkListing.fileName(key))
     val doctored = JdkListing(real.modules, real.names.drop(1), real.moduleOf.drop(1))
     JdkListing.writeCached(file, key, doctored)
     val loaded = JdkListing.load(Some(dir))
@@ -96,10 +96,10 @@ class JdkListingSuite extends munit.FunSuite:
   }
 
   test("a class listed under a module this JDK does not have is unreadable, not an exception") {
-    val dir  = freshDir()
-    val real = JdkListing.list()
+    val dir         = freshDir()
+    val real        = JdkListing.list()
     val ghostModule = real.modules.length
-    val doctored = JdkListing(real.modules :+ "no.such.module", real.names :+ "ghost/Phantom", real.moduleOf :+ ghostModule)
+    val doctored    = JdkListing(real.modules :+ "no.such.module", real.names :+ "ghost/Phantom", real.moduleOf :+ ghostModule)
     JdkListing.writeCached(dir.resolve(JdkListing.fileName(key)), key, doctored)
     val jdk = ClassSource.jdk(Some(dir))
     try
@@ -108,4 +108,3 @@ class JdkListingSuite extends munit.FunSuite:
       assert(jdk.read("java/lang/Object").exists(_.nonEmpty), "real classes are still read")
     finally jdk.close()
   }
-

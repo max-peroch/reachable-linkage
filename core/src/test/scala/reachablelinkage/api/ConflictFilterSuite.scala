@@ -10,14 +10,24 @@ import reachablelinkage.fixture.{GoneLibrary, Jars}
 class ConflictFilterSuite extends munit.FunSuite:
 
   private def conflict(from: String, target: String, label: ConflictLabel = ConflictLabel.REACHABLE): LinkageConflict =
-    LinkageConflict(ConflictCategory.METHOD_SIGNATURE_NOT_FOUND,
-      Dependency(from, "run", "()V", 1, target, "go", "()V"), "project", "lib", "Method not found", label)
+    LinkageConflict(
+      ConflictCategory.METHOD_SIGNATURE_NOT_FOUND,
+      Dependency(from, "run", "()V", 1, target, "go", "()V"),
+      "project",
+      "lib",
+      "Method not found",
+      label
+    )
 
   private def selector(name: String, subpackages: Boolean = true): PackageSelector =
     PackageSelector.of(name, subpackages).fold(e => fail(e.message), identity)
 
-  private def filter(ignoreSource: List[PackageSelector] = Nil, targetSource: List[PackageSelector] = Nil,
-                     ignoreDestination: List[PackageSelector] = Nil, targetDestination: List[PackageSelector] = Nil): ConflictFilter =
+  private def filter(
+      ignoreSource: List[PackageSelector] = Nil,
+      targetSource: List[PackageSelector] = Nil,
+      ignoreDestination: List[PackageSelector] = Nil,
+      targetDestination: List[PackageSelector] = Nil
+  ): ConflictFilter =
     ConflictFilter.of(ignoreSource, targetSource, ignoreDestination, targetDestination).fold(e => fail(e.message), identity)
 
   private def apply(f: ConflictFilter, cs: LinkageConflict*): (List[(String, String)], List[FilterEffect]) =
@@ -29,7 +39,10 @@ class ConflictFilterSuite extends munit.FunSuite:
   private val c = conflict("other.Thing", "lib.api.sub.Deep")
 
   test("no filter keeps everything and reports nothing") {
-    assertEquals(apply(ConflictFilter.none, a, b, c), (List(("app.Main", "lib.api.Api"), ("app.Main", "lib.impl.Impl"), ("other.Thing", "lib.api.sub.Deep")), Nil))
+    assertEquals(
+      apply(ConflictFilter.none, a, b, c),
+      (List(("app.Main", "lib.api.Api"), ("app.Main", "lib.impl.Impl"), ("other.Thing", "lib.api.sub.Deep")), Nil)
+    )
   }
 
   test("ignoring a package drops its classes and, by default, its subpackages") {
@@ -64,21 +77,28 @@ class ConflictFilterSuite extends munit.FunSuite:
 
   test("several packages in one list: an ignore drops a match of any, a target keeps a match of any") {
     assertEquals(apply(filter(ignoreDestination = List(selector("lib.api"), selector("lib.impl"))), a, b, c)._1, Nil)
-    assertEquals(apply(filter(targetDestination = List(selector("lib.impl"), selector("lib.api.sub"))), a, b, c)._1.map(_._2), List("lib.impl.Impl", "lib.api.sub.Deep"))
+    assertEquals(
+      apply(filter(targetDestination = List(selector("lib.impl"), selector("lib.api.sub"))), a, b, c)._1.map(_._2),
+      List("lib.impl.Impl", "lib.api.sub.Deep")
+    )
   }
 
   test("the four filters apply in order, each only when set, and each says what it removed") {
-    val f = filter(ignoreSource = List(selector("other")), targetDestination = List(selector("lib.api")))
+    val f               = filter(ignoreSource = List(selector("other")), targetDestination = List(selector("lib.api")))
     val (kept, effects) = apply(f, a, b, c)
     assertEquals(kept, List(("app.Main", "lib.api.Api")))
     assertEquals(effects, List(FilterEffect(FilterKind.IGNORE_SOURCE_PACKAGES, 1), FilterEffect(FilterKind.TARGET_DESTINATION_PACKAGES, 1)))
   }
 
   test("an ignore list and a target list on the same side are rejected, on either side") {
-    assertEquals(ConflictFilter.of(ignoreSource = List(selector("a")), targetSource = List(selector("b"))).left.toOption,
-      Some(ConflictFilterError.IgnoreAndTargetBoth(FilterSide.SOURCE)))
-    assertEquals(ConflictFilter.of(ignoreDestination = List(selector("a")), targetDestination = List(selector("b"))).left.toOption,
-      Some(ConflictFilterError.IgnoreAndTargetBoth(FilterSide.DESTINATION)))
+    assertEquals(
+      ConflictFilter.of(ignoreSource = List(selector("a")), targetSource = List(selector("b"))).left.toOption,
+      Some(ConflictFilterError.IgnoreAndTargetBoth(FilterSide.SOURCE))
+    )
+    assertEquals(
+      ConflictFilter.of(ignoreDestination = List(selector("a")), targetDestination = List(selector("b"))).left.toOption,
+      Some(ConflictFilterError.IgnoreAndTargetBoth(FilterSide.DESTINATION))
+    )
     assert(ConflictFilter.of(ignoreSource = List(selector("a")), targetDestination = List(selector("b"))).isRight, "different sides are fine")
     assert(ConflictFilterError.IgnoreAndTargetBoth(FilterSide.SOURCE).message.contains("ignoreSourcePackages"))
   }
@@ -97,7 +117,11 @@ class ConflictFilterSuite extends munit.FunSuite:
 
   test("an inner class is in its outer class's package, and the order of what is kept does not change") {
     val inner = conflict("app.Main$Inner", "lib.api.Api$Nested")
-    assertEquals(apply(filter(ignoreDestination = List(selector("lib.api"))), inner, b)._1, List(("app.Main", "lib.impl.Impl")), "the nested class is in lib.api, so it is ignored")
+    assertEquals(
+      apply(filter(ignoreDestination = List(selector("lib.api"))), inner, b)._1,
+      List(("app.Main", "lib.impl.Impl")),
+      "the nested class is in lib.api, so it is ignored"
+    )
     assertEquals(apply(filter(ignoreSource = List(selector("app"))), inner, c)._1.map(_._1), List("other.Thing"), "app.Main$Inner is in app")
     assertEquals(apply(filter(targetDestination = List(selector("lib.api"))), b, inner, a)._1.map(_._2), List("lib.api.Api$Nested", "lib.api.Api"))
   }
@@ -106,15 +130,34 @@ class ConflictFilterSuite extends munit.FunSuite:
 
   private val lib = Map(
     "lib/api/Api.java"   -> "package lib.api; public class Api { public static void x() { } }",
-    "lib/impl/Impl.java" -> "package lib.impl; public class Impl { public static void y() { } }")
+    "lib/impl/Impl.java" -> "package lib.impl; public class Impl { public static void y() { } }"
+  )
 
   private def check(filter: ConflictFilter): LinkageResult =
     val (v1, _) = GoneLibrary.build(lib)
     // v2 of the library lacks both methods: rebuild it without them
-    val gone = compile(Map("lib/api/Api.java" -> "package lib.api; public class Api { }", "lib/impl/Impl.java" -> "package lib.impl; public class Impl { }", "lib/Gone.java" -> "package lib; public class Gone { }"))
+    val gone = compile(
+      Map(
+        "lib/api/Api.java"   -> "package lib.api; public class Api { }",
+        "lib/impl/Impl.java" -> "package lib.impl; public class Impl { }",
+        "lib/Gone.java"      -> "package lib; public class Gone { }"
+      )
+    )
     val app = compile(Map("app/Main.java" -> "package app; public class Main { public static void run() { lib.api.Api.x(); lib.impl.Impl.y(); } }"), Seq(v1))
-    Linkage.check(LinkageRequest(java.util.List.of(app), java.util.List.of(ClasspathEntry("lib", Jars.of(gone))), CheckScope.App,
-      java.util.Set.of(), java.util.List.of(), CheckPrecision.METHOD, java.util.Optional.empty[Path](), KeepRule.standard(), java.util.Set.of(), filter))
+    Linkage.check(
+      LinkageRequest(
+        java.util.List.of(app),
+        java.util.List.of(ClasspathEntry("lib", Jars.of(gone))),
+        CheckScope.App,
+        java.util.Set.of(),
+        java.util.List.of(),
+        CheckPrecision.METHOD,
+        java.util.Optional.empty[Path](),
+        KeepRule.standard(),
+        java.util.Set.of(),
+        filter
+      )
+    )
 
   test("a request's filter removes conflicts from the result and says how many") {
     val unfiltered = check(ConflictFilter.none)

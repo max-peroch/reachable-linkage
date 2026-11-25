@@ -5,8 +5,15 @@ import scala.jdk.CollectionConverters.*
 class ReportSuite extends munit.FunSuite:
 
   private def conflict(
-      from: String, method: String, target: String, member: String = "", label: ConflictLabel = ConflictLabel.REACHABLE,
-      category: ConflictCategory = ConflictCategory.CLASS_NOT_FOUND, line: Int = 10, usedBy: String = "app.jar", existsIn: String = "<unknown>"
+      from: String,
+      method: String,
+      target: String,
+      member: String = "",
+      label: ConflictLabel = ConflictLabel.REACHABLE,
+      category: ConflictCategory = ConflictCategory.CLASS_NOT_FOUND,
+      line: Int = 10,
+      usedBy: String = "app.jar",
+      existsIn: String = "<unknown>"
   ): LinkageConflict =
     LinkageConflict(category, Dependency(from, method, "()V", line, target, member, ""), usedBy, existsIn, s"Class not found: $target", label)
 
@@ -24,9 +31,12 @@ class ReportSuite extends munit.FunSuite:
   }
 
   test("a summary counts conflicts and groups by label, worst first") {
-    val lines = render(ReportOptions(),
-      conflict("a.A", "m", "x.Gone"), conflict("a.B", "m", "x.Gone", label = ConflictLabel.LATENT),
-      conflict("a.C", "m", "y.Other", label = ConflictLabel.GUARDED))
+    val lines = render(
+      ReportOptions(),
+      conflict("a.A", "m", "x.Gone"),
+      conflict("a.B", "m", "x.Gone", label = ConflictLabel.LATENT),
+      conflict("a.C", "m", "y.Other", label = ConflictLabel.GUARDED)
+    )
     assertEquals(lines.head, "3 conflicts in 2 groups: REACHABLE 1, GUARDED 1, LATENT 1")
   }
 
@@ -44,16 +54,19 @@ class ReportSuite extends munit.FunSuite:
   }
 
   test("groups come worst first, then the most places, then by name") {
-    val lines = render(ReportOptions(),
+    val lines = render(
+      ReportOptions(),
       conflict("a.A", "m", "l.Latent", label = ConflictLabel.LATENT),
       conflict("a.A", "m", "r.OnePlace"),
-      conflict("a.A", "m", "r.TwoPlaces"), conflict("a.B", "m", "r.TwoPlaces"))
+      conflict("a.A", "m", "r.TwoPlaces"),
+      conflict("a.B", "m", "r.TwoPlaces")
+    )
     assertEquals(lines.filter(_.startsWith("[")).map(_.split(" ")(2).stripSuffix(":")), List("r.TwoPlaces", "r.OnePlace", "l.Latent"))
   }
 
   test("the number of groups and of places per group is bounded, and what is left out is counted") {
-    val many = (1 to 10).map(i => conflict(s"a.C$i", "m", "x.Gone"))
-    val one  = (1 to 5).map(i => conflict("a.A", "m", s"t.T$i"))
+    val many  = (1 to 10).map(i => conflict(s"a.C$i", "m", "x.Gone"))
+    val one   = (1 to 5).map(i => conflict("a.A", "m", s"t.T$i"))
     val lines = render(ReportOptions(maxGroups = 3, maxSitesPerGroup = 2), (many ++ one)*)
     assertEquals(lines.count(_.startsWith("[")), 3)
     assert(lines.exists(_.contains("... and 8 more places")), lines.mkString("\n"))
@@ -69,7 +82,7 @@ class ReportSuite extends munit.FunSuite:
   }
 
   test("Scala's generated names are shown as source names, unless asked not to") {
-    val c = conflict("app.Foo$", "$anonfun$bar$1", "lib.Gone$", member = "$plus", line = 4)
+    val c     = conflict("app.Foo$", "$anonfun$bar$1", "lib.Gone$", member = "$plus", line = 4)
     val shown = render(ReportOptions(), c)
     assert(shown.exists(_.contains("lib.Gone$") == false) && shown.exists(_.contains("object lib.Gone")), shown.mkString("\n"))
     assert(shown.exists(_.contains("object app.Foo#anonymous function in bar:4")), shown.mkString("\n"))
@@ -97,4 +110,3 @@ class ReportSuite extends munit.FunSuite:
     assertEquals(lines.count(_.startsWith("[")), 2)
     assert(lines.head.contains("in 2 groups"), lines.head)
   }
-

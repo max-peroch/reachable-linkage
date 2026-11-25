@@ -6,7 +6,8 @@ class ClassParserSuite extends munit.FunSuite:
 
   private def bytesOf(c: Class[?]): Array[Byte] =
     val in = c.getClassLoader.getResourceAsStream(c.getName.replace('.', '/') + ".class")
-    try in.readAllBytes() finally in.close()
+    try in.readAllBytes()
+    finally in.close()
 
   test("parses supertypes, members and method references") {
     val syms = new Symbols

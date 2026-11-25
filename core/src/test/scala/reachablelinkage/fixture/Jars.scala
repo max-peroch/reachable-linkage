@@ -11,9 +11,12 @@ object Jars:
     val file = Files.createTempFile("fixture", ".jar")
     val out  = new JarOutputStream(Files.newOutputStream(file))
     val walk = Files.walk(classes)
-    try walk.iterator.asScala.filter(Files.isRegularFile(_)).foreach: p =>
-      out.putNextEntry(new ZipEntry(classes.relativize(p).toString.replace('\\', '/')))
-      out.write(Files.readAllBytes(p))
-      out.closeEntry()
+    try
+      walk.iterator.asScala
+        .filter(Files.isRegularFile(_))
+        .foreach: p =>
+          out.putNextEntry(new ZipEntry(classes.relativize(p).toString.replace('\\', '/')))
+          out.write(Files.readAllBytes(p))
+          out.closeEntry()
     finally { walk.close(); out.close() }
     file

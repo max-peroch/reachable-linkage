@@ -4,27 +4,20 @@ import scala.annotation.tailrec
 import reachablelinkage.classfile.AccessFlags.*
 import reachablelinkage.symbols.ClassId
 
-/**
- * What the checker needs from one class file. References are flat int arrays to keep the
- * per-class footprint small: `fieldRefs` has three ints per entry (owner ClassId, name NameId,
- * desc DescId); `methodRefs` has four (the same three, then 1 if the call site is static, else 0).
- * `classRefs` has one ClassId per entry. The three `*RefStart` arrays have one more entry than there
- * are methods: method `m` owns reference entries `start(m)` until `start(m + 1)` of the matching array
- * (entries, not ints), because references are recorded in method order. `guards` lists, for the
- * references inside a `try` range whose handlers catch a linkage error type, triples of (kind, entry,
- * [[Guards]] bits); it is empty for most classes. `probes` holds the internal names of the string
- * constants that look like class names (see [[ProbeNames]]). `annotations` lists, for every visible
- * annotation, quadruples of (kind, member index or -1, annotation
- * ClassId, class value or -1): kind 0 is an annotation on the class, 1 on a method, 3 on a field (the index is
- * the member's), 2 a class value found inside an annotation (on the class or on a method; none for a field). `newRefs` and `fieldWrites` list, in order, the
- * entries of `classRefs` that come from a `new` instruction and the entries of `fieldRefs` that are writes
- * (`putfield`, `putstatic`); the rest are other uses. `signatureTypes` holds, three ints per entry (0 for a method and 1 for a field, the member's
- * index, a ClassId), each class named in the generic `Signature` of a member (`List<Missing>` names `Missing`, which the erased descriptor does not):
- * reflection on a member's generic types loads them. `literalArgs` holds, three ints per entry (the owner of a call as a ClassId, the called
- * method's NameId, a ClassId), each class literal (`Foo.class`) passed to a call: a framework that is handed a class (`mapper.readValue(json, Foo.class)`)
- * builds it and calls its accessors, though no instruction does. `positions` is only set by a parse that
- * asked for it.
- */
+/** What the checker needs from one class file. References are flat int arrays to keep the per-class footprint small: `fieldRefs` has three ints per entry
+  * (owner ClassId, name NameId, desc DescId); `methodRefs` has four (the same three, then 1 if the call site is static, else 0). `classRefs` has one ClassId
+  * per entry. The three `*RefStart` arrays have one more entry than there are methods: method `m` owns reference entries `start(m)` until `start(m + 1)` of the
+  * matching array (entries, not ints), because references are recorded in method order. `guards` lists, for the references inside a `try` range whose handlers
+  * catch a linkage error type, triples of (kind, entry, [[Guards]] bits); it is empty for most classes. `probes` holds the internal names of the string
+  * constants that look like class names (see [[ProbeNames]]). `annotations` lists, for every visible annotation, quadruples of (kind, member index or -1,
+  * annotation ClassId, class value or -1): kind 0 is an annotation on the class, 1 on a method, 3 on a field (the index is the member's), 2 a class value found
+  * inside an annotation (on the class or on a method; none for a field). `newRefs` and `fieldWrites` list, in order, the entries of `classRefs` that come from
+  * a `new` instruction and the entries of `fieldRefs` that are writes (`putfield`, `putstatic`); the rest are other uses. `signatureTypes` holds, three ints
+  * per entry (0 for a method and 1 for a field, the member's index, a ClassId), each class named in the generic `Signature` of a member (`List<Missing>` names
+  * `Missing`, which the erased descriptor does not): reflection on a member's generic types loads them. `literalArgs` holds, three ints per entry (the owner of
+  * a call as a ClassId, the called method's NameId, a ClassId), each class literal (`Foo.class`) passed to a call: a framework that is handed a class
+  * (`mapper.readValue(json, Foo.class)`) builds it and calls its accessors, though no instruction does. `positions` is only set by a parse that asked for it.
+  */
 private[reachablelinkage] final class ClassInfo(
     val id: ClassId,
     val access: Int,
@@ -59,8 +52,8 @@ private[reachablelinkage] final class ClassInfo(
   private lazy val fieldIndexMap: LongIntMap = indexOfFields()
 
   private def indexOfMethods(kind: CallKind): LongIntMap =
-    val wantStatic = kind == CallKind.Static
-    val map        = new LongIntMap(methods.length)
+    val wantStatic                  = kind == CallKind.Static
+    val map                         = new LongIntMap(methods.length)
     @tailrec def from(i: Int): Unit =
       if i < methods.length then
         val m = methods(i)
@@ -86,7 +79,7 @@ private[reachablelinkage] final class ClassInfo(
     methods.indices.filter(i => methods(i).access.has(Abstract) && !methods(i).access.has(Static)).toArray
 
   private def indexOfFields(): LongIntMap =
-    val map = new LongIntMap(fields.length)
+    val map                         = new LongIntMap(fields.length)
     @tailrec def from(i: Int): Unit =
       if i < fields.length then
         map.put(Keys.of(fields(i).name.value, fields(i).desc.value), i)
@@ -98,7 +91,7 @@ private[reachablelinkage] final class ClassInfo(
   def fieldIndex(key: Long): Int = fieldIndexMap.get(key)
 
   def declaresMethod(key: Long, kind: CallKind): Boolean = methodIndex(key, kind) >= 0
-  def declaresField(key: Long): Boolean = fieldIndex(key) >= 0
+  def declaresField(key: Long): Boolean                  = fieldIndex(key) >= 0
 
   /** [[Guards]] bits of the handlers protecting method-reference entry `ref`; 0 if none. */
   def guardOfMethodRef(ref: Int): Int = guardOf(0, ref)
@@ -106,7 +99,7 @@ private[reachablelinkage] final class ClassInfo(
   def guardOfClassRef(ref: Int): Int  = guardOf(2, ref)
 
   private lazy val guardMap: LongIntMap =
-    val map = new LongIntMap(guards.length / 3)
+    val map                         = new LongIntMap(guards.length / 3)
     @tailrec def from(i: Int): Unit =
       if i < guards.length then
         map.put((guards(i).toLong << 32) | guards(i + 1).toLong, guards(i + 2))

@@ -5,17 +5,16 @@ import java.nio.file.Files
 import reachablelinkage.fixture.JavaFixture.compile
 import reachablelinkage.symbols.{ClassId, Symbols}
 
-/**
- * The classes only a generic `Signature` names: `List<Missing>` is `List` in the descriptor, and `Missing` only in the signature, which
- * reflection on the member's generic types loads.
- */
+/** The classes only a generic `Signature` names: `List<Missing>` is `List` in the descriptor, and `Missing` only in the signature, which reflection on the
+  * member's generic types loads.
+  */
 class GenericSignatureSuite extends munit.FunSuite:
 
   private val dir = compile(
     List("Bound", "Arg", "InnerArg", "Wild", "MethodBound", "Key", "Val").map(n => s"p/$n.java" -> s"package p; public class $n { }").toMap ++ Map(
-    "p/Outer.java" -> "package p; public class Outer<A> { public class Inner<B> { } }",
-    "p/Holder.java" ->
-      """package p;
+      "p/Outer.java"  -> "package p; public class Outer<A> { public class Inner<B> { } }",
+      "p/Holder.java" ->
+        """package p;
         |import java.util.*;
         |public class Holder<T extends p.Bound> {
         |  public Map<String, p.Arg> field;
@@ -26,7 +25,9 @@ class GenericSignatureSuite extends munit.FunSuite:
         |  public <U extends p.MethodBound> List<U> method(Map.Entry<p.Key, p.Val> e, T t) { return null; }
         |  public void noGenerics(String s) { }
         |}
-        |""".stripMargin))
+        |""".stripMargin
+    )
+  )
 
   private val syms = new Symbols
   private val info = ClassParser.parse(Files.readAllBytes(dir.resolve("p/Holder.class")), syms).fold(e => fail(e.message), identity)
@@ -78,15 +79,18 @@ class GenericSignatureSuite extends munit.FunSuite:
             |  @Wired public void method(List<Dep> methodArg) { }
             |  public void unwiredMethod(List<Dep> other) { }
             |}
-            |""".stripMargin),
-      removed = Set("lib/Dep"))
+            |""".stripMargin
+      ),
+      removed = Set("lib/Dep")
+    )
     val syms  = new Symbols
     val index = ClassIndex(Vector(source(v2), ClassSource.jdk()), syms)
     val scope = Scopes.of(index, Vector(0), Vector(0), Vector(0))
-    val named = Checker.findings(index, scope, CheckOptions(Precision.Class, Seq(Keep.Members(Keep.classNames("lib/Wired"))))).collect:
-      case f if f.conflict.isInstanceOf[Conflict.MissingSignatureType] =>
-        val Conflict.MissingSignatureType(_, name, _, missing) = f.conflict: @unchecked
-        (syms.name(name), syms.className(missing))
+    val named = Checker
+      .findings(index, scope, CheckOptions(Precision.Class, Seq(Keep.Members(Keep.classNames("lib/Wired")))))
+      .collect:
+        case f if f.conflict.isInstanceOf[Conflict.MissingSignatureType] =>
+          val Conflict.MissingSignatureType(_, name, _, missing) = f.conflict: @unchecked
+          (syms.name(name), syms.className(missing))
     assertEquals(named.toSet, Set(("field", "lib/Dep"), ("<init>", "lib/Dep"), ("method", "lib/Dep")))
   }
-

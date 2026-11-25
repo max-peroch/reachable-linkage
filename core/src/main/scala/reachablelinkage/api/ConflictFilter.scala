@@ -2,16 +2,13 @@ package reachablelinkage.api
 
 import scala.jdk.CollectionConverters.*
 
-/**
- * Which conflicts to keep by the package of their two ends, with the semantics of sbt-missinglink's four settings
- * (`missinglinkIgnoreSourcePackages`, `missinglinkTargetSourcePackages`, `missinglinkIgnoreDestinationPackages`,
- * `missinglinkTargetDestinationPackages`). Source is the package of the class holding the broken reference,
- * destination the package of the class it points at (an inner class counts as its outer class's package).
- * An ignore list drops what is in any of its packages; a target list keeps only what is in one of them; a side
- * cannot have both. The four are applied in that order, each only if it is not empty. They filter the finished list:
- * reachability and everything else is unchanged. A class in the default package has the package `""`, which no
- * selector matches (sbt-missinglink's own code throws on such a class).
- */
+/** Which conflicts to keep by the package of their two ends, with the semantics of sbt-missinglink's four settings (`missinglinkIgnoreSourcePackages`,
+  * `missinglinkTargetSourcePackages`, `missinglinkIgnoreDestinationPackages`, `missinglinkTargetDestinationPackages`). Source is the package of the class
+  * holding the broken reference, destination the package of the class it points at (an inner class counts as its outer class's package). An ignore list drops
+  * what is in any of its packages; a target list keeps only what is in one of them; a side cannot have both. The four are applied in that order, each only if
+  * it is not empty. They filter the finished list: reachability and everything else is unchanged. A class in the default package has the package `""`, which no
+  * selector matches (sbt-missinglink's own code throws on such a class).
+  */
 final case class ConflictFilter private (
     ignoreSource: List[PackageSelector],
     targetSource: List[PackageSelector],
@@ -27,14 +24,16 @@ final case class ConflictFilter private (
 
   /** The conflicts that pass, in their order, and what each filter that was set removed. */
   def apply(conflicts: java.util.List[LinkageConflict]): ConflictFilter.Outcome =
-    val (kept, effects) = FilterKind.values.toList.filter(selectorsOf(_).nonEmpty).foldLeft((conflicts.asScala.toList, List.empty[FilterEffect])):
-      case ((remaining, done), kind) =>
-        val selectors = selectorsOf(kind)
-        def matched(c: LinkageConflict): Boolean = selectors.exists(_.matches(ConflictFilter.packageOf(c, kind.side)))
-        val passing = kind.mode match
-          case FilterMode.Ignore => remaining.filterNot(matched)
-          case FilterMode.Target => remaining.filter(matched)
-        (passing, done :+ FilterEffect(kind, remaining.size - passing.size))
+    val (kept, effects) = FilterKind.values.toList
+      .filter(selectorsOf(_).nonEmpty)
+      .foldLeft((conflicts.asScala.toList, List.empty[FilterEffect])):
+        case ((remaining, done), kind) =>
+          val selectors                            = selectorsOf(kind)
+          def matched(c: LinkageConflict): Boolean = selectors.exists(_.matches(ConflictFilter.packageOf(c, kind.side)))
+          val passing                              = kind.mode match
+            case FilterMode.Ignore => remaining.filterNot(matched)
+            case FilterMode.Target => remaining.filter(matched)
+          (passing, done :+ FilterEffect(kind, remaining.size - passing.size))
     ConflictFilter.Outcome(kept.asJava, effects.asJava)
 
 object ConflictFilter:

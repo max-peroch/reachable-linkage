@@ -6,18 +6,19 @@ import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 
-/**
- * The classes of the running JDK and the module each lives in. Listing the roughly 32,000 entries
- * through the module system costs 300 to 400 ms on a cold JVM, so it can be kept on disk: a file per
- * JDK image, keyed by the image's identity and read back in tens of milliseconds. The cache is best
- * effort: anything wrong with it (missing, corrupt, from another JDK, unwritable) means listing the
- * JDK afresh, never an error.
- *
- * @param modules  module names, sorted
- * @param names    internal class names (`java/lang/Object`), first module wins for a duplicate
- * @param moduleOf for each class, its index into `modules`
- * @param unreadable modules that could not be listed (their classes are absent from `names`); a listing with any is never cached
- */
+/** The classes of the running JDK and the module each lives in. Listing the roughly 32,000 entries through the module system costs 300 to 400 ms on a cold JVM,
+  * so it can be kept on disk: a file per JDK image, keyed by the image's identity and read back in tens of milliseconds. The cache is best effort: anything
+  * wrong with it (missing, corrupt, from another JDK, unwritable) means listing the JDK afresh, never an error.
+  *
+  * @param modules
+  *   module names, sorted
+  * @param names
+  *   internal class names (`java/lang/Object`), first module wins for a duplicate
+  * @param moduleOf
+  *   for each class, its index into `modules`
+  * @param unreadable
+  *   modules that could not be listed (their classes are absent from `names`); a listing with any is never cached
+  */
 private[classpath] final class JdkListing(val modules: Array[String], val names: Array[String], val moduleOf: Array[Int], val unreadable: List[String] = Nil)
 
 private[classpath] object JdkListing:
@@ -25,12 +26,14 @@ private[classpath] object JdkListing:
 
   /** The listing, from `cacheDirectory` if it has a valid one, else by listing the JDK (and saving it there). */
   def load(cacheDirectory: Option[Path]): JdkListing =
-    val key = imageKey()
+    val key  = imageKey()
     val file = for dir <- cacheDirectory; k <- key yield dir.resolve(fileName(k))
-    file.flatMap(f => key.flatMap(readCached(f, _))).getOrElse:
-      val listing = list()
-      for f <- file; k <- key if listing.unreadable.isEmpty do writeCached(f, k, listing)
-      listing
+    file
+      .flatMap(f => key.flatMap(readCached(f, _)))
+      .getOrElse:
+        val listing = list()
+        for f <- file; k <- key if listing.unreadable.isEmpty do writeCached(f, k, listing)
+        listing
 
   /** Identity of the running JDK's runtime image; None when it has no `lib/modules` to take it from. */
   private[classpath] def imageKey(): Option[String] =
@@ -48,24 +51,30 @@ private[classpath] object JdkListing:
     val digest = MessageDigest.getInstance("SHA-256").digest(key.getBytes("UTF-8"))
     "jdk-" + digest.take(8).map(b => f"${b & 0xff}%02x").mkString + ".listing"
 
-  /** Lists every class of every system module, in module-name order, through the module system; a module that cannot be read is left out and named in `unreadable`. */
+  /** Lists every class of every system module, in module-name order, through the module system; a module that cannot be read is left out and named in
+    * `unreadable`.
+    */
   private[classpath] def list(): JdkListing =
-    val refs    = java.lang.module.ModuleFinder.ofSystem().findAll().asScala.toVector.sortBy(_.descriptor.name)
-    val modules = refs.map(_.descriptor.name).toArray
-    val names   = Array.newBuilder[String]
-    val owner   = Array.newBuilder[Int]
-    val seen    = new java.util.HashSet[String]()
+    val refs       = java.lang.module.ModuleFinder.ofSystem().findAll().asScala.toVector.sortBy(_.descriptor.name)
+    val modules    = refs.map(_.descriptor.name).toArray
+    val names      = Array.newBuilder[String]
+    val owner      = Array.newBuilder[Int]
+    val seen       = new java.util.HashSet[String]()
     val unreadable = List.newBuilder[String]
     refs.zipWithIndex.foreach: (ref, m) =>
       try
         val reader = ref.open()
         try
-          reader.list().iterator().asScala.foreach: resource =>
-            if resource.endsWith(".class") && resource != "module-info.class" then
-              val name = resource.dropRight(6)
-              if seen.add(name) then
-                names += name
-                owner += m
+          reader
+            .list()
+            .iterator()
+            .asScala
+            .foreach: resource =>
+              if resource.endsWith(".class") && resource != "module-info.class" then
+                val name = resource.dropRight(6)
+                if seen.add(name) then
+                  names += name
+                  owner += m
         finally reader.close()
       catch case _: java.io.IOException => unreadable += modules(m)
     JdkListing(modules, names.result(), owner.result(), unreadable.result())

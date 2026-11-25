@@ -8,23 +8,18 @@ import reachablelinkage.classfile.AccessFlags.*
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.{ClassId, DescId, NameId}
 
-/**
- * Which methods the application can reach. Static and special calls are exact; virtual and interface
- * calls go to the declared method plus every override in a class that has been reached (class
- * hierarchy analysis over reached classes only, so classes nothing references never add edges);
- * `invokedynamic` handles are edges; reaching a class reaches its static initialiser and its
- * supertypes'; a method that overrides a JDK method is a root, because the JDK calls it; and a
- * `ServiceLoader` provider's no-argument constructor is a root once its service interface is reached
- * (always, for a JDK interface).
- *
- * It also records the guard each call site has (the `catch` handlers around it) and solves, for every
- * method, which linkage errors are caught by every call that can reach it: a method called only from
- * inside handlers for an error is itself guarded against that error. A root, and the target of a
- * method handle, inherit nothing, since they can run from anywhere.
- *
- * Constant class names in reached classes are reflective roots. Not modelled yet, so these can be missed: computed reflection and framework callbacks. A class is treated as
- * instantiable as soon as anything references it (no RTA).
- */
+/** Which methods the application can reach. Static and special calls are exact; virtual and interface calls go to the declared method plus every override in a
+  * class that has been reached (class hierarchy analysis over reached classes only, so classes nothing references never add edges); `invokedynamic` handles are
+  * edges; reaching a class reaches its static initialiser and its supertypes'; a method that overrides a JDK method is a root, because the JDK calls it; and a
+  * `ServiceLoader` provider's no-argument constructor is a root once its service interface is reached (always, for a JDK interface).
+  *
+  * It also records the guard each call site has (the `catch` handlers around it) and solves, for every method, which linkage errors are caught by every call
+  * that can reach it: a method called only from inside handlers for an error is itself guarded against that error. A root, and the target of a method handle,
+  * inherit nothing, since they can run from anywhere.
+  *
+  * Constant class names in reached classes are reflective roots. Not modelled yet, so these can be missed: computed reflection and framework callbacks. A class
+  * is treated as instantiable as soon as anything references it (no RTA).
+  */
 private[linkage] final class MethodGraph private (
     reachedClasses: BitSet,
     reachedMethods: Slots[BitSet],
@@ -45,17 +40,14 @@ private[linkage] final class MethodGraph private (
       bits != null && bits.get(method)
     }
 
-  /**
-   * How is the method (or, for -1, the class) reached? The walk runs from direct roots alone first, then adds what a reflection rule,
-   * a keep rule or the class-load log makes a root, then the `$deserializeLambda$` hooks, so what a later phase adds has no path
-   * through an earlier one.
-   */
+  /** How is the method (or, for -1, the class) reached? The walk runs from direct roots alone first, then adds what a reflection rule, a keep rule or the
+    * class-load log makes a root, then the `$deserializeLambda$` hooks, so what a later phase adds has no path through an earlier one.
+    */
   private def reach(c: ClassId, method: Int): Reach = provenance.of(c.value, method)
 
-  /**
-   * The [[reachablelinkage.classfile.Guards]] bits that every call reaching method `method` of `c`
-   * passes through a handler for; 0 for a root or a method the graph did not reach.
-   */
+  /** The [[reachablelinkage.classfile.Guards]] bits that every call reaching method `method` of `c` passes through a handler for; 0 for a root or a method the
+    * graph did not reach.
+    */
   def inheritedGuard(c: ClassId, method: Int): Int =
     nodeBase.get(c.value) match
       case null => 0
@@ -63,11 +55,9 @@ private[linkage] final class MethodGraph private (
         val node = base.intValue + method
         if method < 0 || node >= entryGuards.length || entryGuards(node) == MethodGraph.NotSolved then 0 else entryGuards(node)
 
-  /**
-   * Could the abstract method `key`, declared by `declaring`, be called on an instance of `c`? Only
-   * if some reached code makes a virtual call on it through `c` or one of its ancestors. A method of
-   * a JDK type is assumed to be called, since the JDK is not walked.
-   */
+  /** Could the abstract method `key`, declared by `declaring`, be called on an instance of `c`? Only if some reached code makes a virtual call on it through
+    * `c` or one of its ancestors. A method of a JDK type is assumed to be called, since the JDK is not walked.
+    */
   private def calledByCode(index: ClassIndex, c: ClassId, declaring: ClassId, key: Long): Boolean =
     val source = index.sourceIndex(declaring)
     val walked = source >= 0 && traverse.get(source)
@@ -97,7 +87,7 @@ private[linkage] final class MethodGraph private (
   def holderOf(index: ClassIndex, f: Finding): Int =
     f.kind match
       case RefKind.Hierarchy | RefKind.Service => -1
-      case kind =>
+      case kind                                =>
         index.get(f.conflict.inClass) match
           case null => -1
           case info =>
@@ -114,8 +104,8 @@ private[linkage] final class MethodGraph private (
         val onlyByName = !calledByCode(index, c, declaring, Keys.of(name.value, desc.value)) && calledByReflection(name)
         val base       = reach(c, -1)
         if onlyByName && base.ordinal < Reach.Rule.ordinal then Reach.Rule else base
-      case _ if f.kind == RefKind.Service                    => Reach.Direct
-      case _                                                 => reach(f.conflict.inClass, holderOf(index, f))
+      case _ if f.kind == RefKind.Service => Reach.Direct
+      case _                              => reach(f.conflict.inClass, holderOf(index, f))
 
   /** The guard a finding inherits from the calls that reach the method it is in. */
   def inheritedGuard(index: ClassIndex, f: Finding): Int =
@@ -123,8 +113,8 @@ private[linkage] final class MethodGraph private (
     if holder < 0 then 0 else inheritedGuard(f.conflict.inClass, holder)
 
   private def labelReference(index: ClassIndex, f: Finding): Label =
-    val c      = f.conflict.inClass
-    val holder = holderOf(index, f)
+    val c       = f.conflict.inClass
+    val holder  = holderOf(index, f)
     val reached =
       if f.kind == RefKind.Service then classReached(c) || (index.exists(c) && !traverse.get(index.sourceIndex(c)))
       else if holder >= 0 then methodReached(c, holder)
@@ -134,27 +124,45 @@ private[linkage] final class MethodGraph private (
 private[linkage] object MethodGraph:
   /** An entry guard no edge has narrowed: the node was not reached from a root. */
   private val NotSolved: Int = -1
+
   /** The mask of an edge whose target inherits nothing from its caller (a method handle). */
   private val Unguarded: Int = Int.MinValue
 
-  /**
-   * @param appClasses every method of these classes starts the walk
-   * @param traverse   classpath entries the graph may enter (a bit per entry); the JDK is left out
-   */
-  def build(index: ClassIndex, resolver: Resolver, rules: KeepRules, dispatch: Dispatch, appClasses: Iterable[ClassId], loaded: Iterable[ClassId], traverse: BitSet): MethodGraph =
+  /** @param appClasses
+    *   every method of these classes starts the walk
+    * @param traverse
+    *   classpath entries the graph may enter (a bit per entry); the JDK is left out
+    */
+  def build(
+      index: ClassIndex,
+      resolver: Resolver,
+      rules: KeepRules,
+      dispatch: Dispatch,
+      appClasses: Iterable[ClassId],
+      loaded: Iterable[ClassId],
+      traverse: BitSet
+  ): MethodGraph =
     build(index, resolver, rules, dispatch, appClasses, loaded, traverse, new FrameworkTargets(index, rules, Generated.of(index, rules), traverse))
 
   /** As above, with the framework targets already prepared (the class walk asks the same questions). */
-  def build(index: ClassIndex, resolver: Resolver, rules: KeepRules, dispatch: Dispatch, appClasses: Iterable[ClassId], loaded: Iterable[ClassId], traverse: BitSet,
-      targets: FrameworkTargets): MethodGraph =
+  def build(
+      index: ClassIndex,
+      resolver: Resolver,
+      rules: KeepRules,
+      dispatch: Dispatch,
+      appClasses: Iterable[ClassId],
+      loaded: Iterable[ClassId],
+      traverse: BitSet,
+      targets: FrameworkTargets
+  ): MethodGraph =
     val b = new Builder(index, resolver, traverse, rules, dispatch, targets)
     b.run(appClasses, loaded)
     MethodGraph(b.reachedClasses, b.reachedMethods, b.virtualCalls, b.ancestorCache, b.nodeBase, b.solveGuards(), traverse, b.provenance, b.reflectedNames)
 
   private final class Builder(index: ClassIndex, resolver: Resolver, traverse: BitSet, rules: KeepRules, dispatch: Dispatch, targets: FrameworkTargets):
-    private val syms     = index.syms
-    private val initName = syms.nameId("<init>")
-    private val clinit   = key("<clinit>", "()V")
+    private val syms      = index.syms
+    private val initName  = syms.nameId("<init>")
+    private val clinit    = key("<clinit>", "()V")
     private val noArgInit = key("<init>", "()V")
     // One function value for the whole walk: asked about every class a rule looks at.
     private val present: ClassId => Boolean = index.exists
@@ -169,7 +177,7 @@ private[linkage] object MethodGraph:
       key("writeReplace", "()Ljava/lang/Object;")
     )
 
-    val reachedClasses                = new BitSet
+    val reachedClasses = new BitSet
     // Under RTA, the classes something instantiates; under CHA a reached class dispatches, so this is unused.
     private val instantiated          = new BitSet
     val reachedMethods: Slots[BitSet] = new Slots[BitSet]
@@ -177,23 +185,23 @@ private[linkage] object MethodGraph:
     // The walk runs in phases, one per kind of root, strongest first (see `Provenance`). During the first only the direct roots are
     // followed and the classes whose reflection rules are owed are noted; the next adds those and the class-load log, the last the
     // deserialisation hooks.
-    val provenance                    = new Provenance
-    private val owed                  = new IntList
-    private def deferring: Boolean    = provenance.phase == Reach.Direct
+    val provenance                     = new Provenance
+    private val owed                   = new IntList
+    private def deferring: Boolean     = provenance.phase == Reach.Direct
     private def deserializing: Boolean = provenance.phase == Reach.Deserialization
-    val ancestorCache                 = new Slots[Array[Int]]
-    private val subtypes              = new Slots[IntList]
-    val virtualCalls                  = new Slots[SlotTable]
+    val ancestorCache                  = new Slots[Array[Int]]
+    private val subtypes               = new Slots[IntList]
+    val virtualCalls                   = new Slots[SlotTable]
 
     // The call graph for guard solving. A node is a method (a class's methods are numbered
     // consecutively from `nodeBase`) or the join of one virtual call (`owner`, method key); the join
     // fans a call out to the declared method and every override, however many call sites share it.
-    val nodeBase                      = new Slots[Integer]
-    private var nextNode              = 0
-    private val roots                 = new BitSet
-    private val edgeFrom              = new IntList
-    private val edgeTo                = new IntList
-    private val edgeMask              = new IntList
+    val nodeBase         = new Slots[Integer]
+    private var nextNode = 0
+    private val roots    = new BitSet
+    private val edgeFrom = new IntList
+    private val edgeTo   = new IntList
+    private val edgeMask = new IntList
 
     private def key(name: String, desc: String): Long = Keys.of(syms.nameId(name).value, syms.descId(desc).value)
 
@@ -222,11 +230,9 @@ private[linkage] object MethodGraph:
     private def edge(from: Int, to: Int, mask: Int): Unit =
       edgeFrom.push(from); edgeTo.push(to); edgeMask.push(mask)
 
-    /**
-     * The walk, one phase per kind of root in order of strength; each phase adds its roots and follows them to the end before the
-     * next starts, so what a phase newly reaches is recorded for it (`Provenance`). A new kind of root is a case of [[Reach]] and an
-     * entry here.
-     */
+    /** The walk, one phase per kind of root in order of strength; each phase adds its roots and follows them to the end before the next starts, so what a phase
+      * newly reaches is recorded for it (`Provenance`). A new kind of root is a case of [[Reach]] and an entry here.
+      */
     def run(appClasses: Iterable[ClassId], loaded: Iterable[ClassId]): Unit =
       Reach.values.foreach: reach =>
         provenance.enter(reach)
@@ -324,18 +330,19 @@ private[linkage] object MethodGraph:
 
     /** `ServiceLoader` makes a provider with its public no-argument constructor. */
     private def rootProviders(service: ClassId): Unit =
-      index.services.providersOf(service).foreach: provider =>
-        reachClass(provider)
-        index.get(provider) match
-          case null => ()
-          case info => reachRoot(provider, info.methodIndex(noArgInit, CallKind.Instance))
+      index.services
+        .providersOf(service)
+        .foreach: provider =>
+          reachClass(provider)
+          index.get(provider) match
+            case null => ()
+            case info => reachRoot(provider, info.methodIndex(noArgInit, CallKind.Instance))
 
-    /**
-     * Constant-name reflection: a string constant in a reached class that names a class on the classpath
-     * (`Class.forName("x.Y")`, `loadClass`, a `Class.forName(...).newInstance()`) loads it, runs its
-     * initialiser and may construct it, so the class and its constructors are reached (`getConstructor(types).newInstance(args)` picks any of them).
-     * An over-approximation (any such string counts, whatever consumes it), which errs towards Reachable.
-     */
+    /** Constant-name reflection: a string constant in a reached class that names a class on the classpath (`Class.forName("x.Y")`, `loadClass`, a
+      * `Class.forName(...).newInstance()`) loads it, runs its initialiser and may construct it, so the class and its constructors are reached
+      * (`getConstructor(types).newInstance(args)` picks any of them). An over-approximation (any such string counts, whatever consumes it), which errs towards
+      * Reachable.
+      */
     private def reflectiveRoots(info: ClassInfo): Unit =
       info.probes.foreach:
         case Probe.ClassName(name) => buildNamedClass(syms.findClass(name))
@@ -366,11 +373,9 @@ private[linkage] object MethodGraph:
     // Method names some reached class looks up by constant name (`getMethod("run")`), as name ids.
     val reflectedNames = new BitSet
 
-    /**
-     * A reflectively looked-up method can be any method of that name, in any class reached, so each
-     * is a root: the receiver class is not tracked. Names are rare, so scanning the reached classes
-     * once per new name is cheap.
-     */
+    /** A reflectively looked-up method can be any method of that name, in any class reached, so each is a root: the receiver class is not tracked. Names are
+      * rare, so scanning the reached classes once per new name is cheap.
+      */
     private def reflectedMethods(c: ClassId, info: ClassInfo): Unit =
       info.reflectedMethodNames.foreach: n =>
         val id = syms.nameId(n).value
@@ -429,10 +434,9 @@ private[linkage] object MethodGraph:
         instantiate(c)
         rootConstructors(c, info)
 
-    /**
-     * A `BeanArguments` rule: a class literal this class hands to a call the rule names is a class a framework builds through its
-     * no-argument constructor and reads and writes through its bean accessors.
-     */
+    /** A `BeanArguments` rule: a class literal this class hands to a call the rule names is a class a framework builds through its no-argument constructor and
+      * reads and writes through its bean accessors.
+      */
     private def beanRoots(info: ClassInfo): Unit =
       rules.beanTargets(info): target =>
         if traversable(target) then
@@ -440,11 +444,12 @@ private[linkage] object MethodGraph:
           instantiate(target)
           index.get(target) match
             case null => ()
-            case ti =>
+            case ti   =>
               reachRoot(target, ti.methodIndex(noArgInit, CallKind.Instance))
               beanAccessors(target, ti)
 
-    /** A `ConstructedArguments` rule: a class handed to a call it names is built by the framework through whichever constructor fits, so all of them are roots. */
+    /** A `ConstructedArguments` rule: a class handed to a call it names is built by the framework through whichever constructor fits, so all of them are roots.
+      */
     private def constructedRoots(info: ClassInfo): Unit =
       rules.constructedTargets(info)(buildThroughConstructors)
 
@@ -484,10 +489,9 @@ private[linkage] object MethodGraph:
             case null => ()
             case ai   => accessorsOf(ClassId(a), ai)
 
-    /**
-     * An `Overrides` rule: a reached class below a named type is built by a framework, which calls the methods of it that override
-     * ones the named type (or what it extends) declares.
-     */
+    /** An `Overrides` rule: a reached class below a named type is built by a framework, which calls the methods of it that override ones the named type (or
+      * what it extends) declares.
+      */
     private def overrideRoots(c: ClassId, info: ClassInfo): Unit =
       if rules.hasOverrideRules && !info.isInterface then
         val named = ancestorsOf(c, info).filter(rules.isOverrideType)
@@ -503,7 +507,8 @@ private[linkage] object MethodGraph:
             if m < info.methods.length then
               val member = info.methods(m)
               if !member.access.has(Static) && !member.access.has(Private) && member.name != initName
-                && overridable(declaring, Keys.of(member.name.value, member.desc.value)) then reachRoot(c, m)
+                && overridable(declaring, Keys.of(member.name.value, member.desc.value))
+              then reachRoot(c, m)
               from(m + 1)
           from(0)
 
@@ -533,10 +538,9 @@ private[linkage] object MethodGraph:
       // Under CHA a reached class dispatches; under RTA it waits until something instantiates it.
       if dispatch == Dispatch.Cha then becomeDispatchable(c, info)
 
-    /**
-     * A class that virtual calls can now land in: it joins the subtype registry, its overrides of
-     * methods outside the graph become roots, and calls already seen on it or an ancestor dispatch here.
-     */
+    /** A class that virtual calls can now land in: it joins the subtype registry, its overrides of methods outside the graph become roots, and calls already
+      * seen on it or an ancestor dispatch here.
+      */
     private def becomeDispatchable(c: ClassId, info: ClassInfo): Unit =
       val ancestors = ancestorsOf(c, info)
       register(c.value, c.value)
@@ -546,10 +550,9 @@ private[linkage] object MethodGraph:
       ancestors.foreach(dispatchPending(c, _))
 
     /** Something builds an instance of `c`: under RTA it can now be the target of a virtual call. */
-    /**
-     * A lambda creates an instance of its functional interface, so under RTA the interface dispatches: a call on it, or on a superinterface,
-     * lands in the default methods the lambda's class inherits (Scala's `JFunction1$mcII$sp.apply(Object)` bridge). CHA already reaches them.
-     */
+    /** A lambda creates an instance of its functional interface, so under RTA the interface dispatches: a call on it, or on a superinterface, lands in the
+      * default methods the lambda's class inherits (Scala's `JFunction1$mcII$sp.apply(Object)` bridge). CHA already reaches them.
+      */
     private def instantiateLambdaInterfaces(info: ClassInfo): Unit =
       info.probes.foreach:
         case Probe.LambdaInterface(name) => instantiateLambdaType(syms.findClass(name))
@@ -577,11 +580,11 @@ private[linkage] object MethodGraph:
 
     private def hasHook(info: ClassInfo): Boolean = hooks.exists(info.declaresMethod(_, CallKind.Instance))
 
-    /**
-     * Reaches the method a call on an instance of `sub` runs: the nearest declaration up the chain, so a method `sub` inherits counts. Under CHA `sub` is any
-     * reached subtype, under RTA only one something instantiates. (CHA once looked only at what `sub` declares itself, which missed an implementation inherited
-     * from a superclass that is not a subtype of the call's owner: netty's `AbstractChannel` runs `DefaultAttributeMap.attr` for a call on `Channel`.)
-     */
+    /** Reaches the method a call on an instance of `sub` runs: the nearest declaration up the chain, so a method `sub` inherits counts. Under CHA `sub` is any
+      * reached subtype, under RTA only one something instantiates. (CHA once looked only at what `sub` declares itself, which missed an implementation
+      * inherited from a superclass that is not a subtype of the call's owner: netty's `AbstractChannel` runs `DefaultAttributeMap.attr` for a call on
+      * `Channel`.)
+      */
     private def reachTarget(slot: Int, sub: ClassId, k: Long): Unit =
       resolver.method(sub, NameId((k >>> 32).toInt), DescId(k.toInt), CallKind.Instance) match
         case Resolution.Found(declaring, member) => reachVia(slot, 0, declaring, member)
@@ -596,10 +599,10 @@ private[linkage] object MethodGraph:
 
     /** Overrides of methods declared outside the traversed classes, and serialization hooks. */
     private def overridesFromOutside(c: ClassId, info: ClassInfo, ancestors: Array[Int]): Unit =
-      val external = ancestors.filter(a => !traversable(ClassId(a)))
+      val external                    = ancestors.filter(a => !traversable(ClassId(a)))
       @tailrec def from(m: Int): Unit =
         if m < info.methods.length then
-          val member = info.methods(m)
+          val member    = info.methods(m)
           val isStatic  = member.access.has(Static)
           val isPrivate = member.access.has(Private)
           if !isStatic && member.name != initName then
@@ -633,14 +636,14 @@ private[linkage] object MethodGraph:
     private def ancestorsOf(c: ClassId, info: ClassInfo): Array[Int] =
       ancestorCache.get(c.value) match
         case null =>
-          val out  = new IntList
-          val seen = new BitSet
+          val out                      = new IntList
+          val seen                     = new BitSet
           def visit(id: ClassId): Unit =
             if !id.isNone && !seen.get(id.value) then
               seen.set(id.value)
               index.get(id) match
                 case null => ()
-                case i =>
+                case i    =>
                   out.push(id.value)
                   visit(i.superName)
                   i.interfaces.foreach(visit)
@@ -656,11 +659,11 @@ private[linkage] object MethodGraph:
       index.get(c) match
         case null => ()
         case info =>
-          val caller = nodeOf(c, method)
+          val caller                                 = nodeOf(c, method)
           @tailrec def calls(i: Int, end: Int): Unit =
             if i < end then { call(caller, info, i); calls(i + 1, end) }
           calls(info.methodRefStart(method), info.methodRefStart(method + 1))
-          val fields = info.fieldRefs
+          val fields                                       = info.fieldRefs
           @tailrec def fieldOwners(i: Int, end: Int): Unit =
             if i < end then { reachClass(ClassId(fields(i * 3))); fieldOwners(i + 1, end) }
           fieldOwners(info.fieldRefStart(method), info.fieldRefStart(method + 1))
@@ -678,15 +681,15 @@ private[linkage] object MethodGraph:
 
     /** One call or method handle: reference `entry` of `info`, made from node `caller`. */
     private def call(caller: Int, info: ClassInfo, entry: Int): Unit =
-      val refs   = info.methodRefs
-      val at     = entry * 4
-      val owner  = ClassId(refs(at))
-      val name   = NameId(refs(at + 1))
-      val desc   = DescId(refs(at + 2))
-      val code   = refs(at + 3)
-      val kind   = CallRef.kind(code)
+      val refs  = info.methodRefs
+      val at    = entry * 4
+      val owner = ClassId(refs(at))
+      val name  = NameId(refs(at + 1))
+      val desc  = DescId(refs(at + 2))
+      val code  = refs(at + 3)
+      val kind  = CallRef.kind(code)
       // A handle's target runs later, elsewhere: it inherits nothing, not even this site's handlers.
-      val mask   = if CallRef.isHandle(code) then Unguarded else info.guardOfMethodRef(entry)
+      val mask = if CallRef.isHandle(code) then Unguarded else info.guardOfMethodRef(entry)
       reachClass(owner)
       // A constructor reference (`Foo::new`) builds a Foo when it is called.
       if CallRef.isHandle(code) && name == initName then instantiate(owner)
@@ -700,10 +703,9 @@ private[linkage] object MethodGraph:
           case Resolution.Found(declaring, member) => reachVia(caller, mask, declaring, member)
           case _                                   => ()
 
-    /**
-     * The join node for virtual calls to method `k` on `owner`, made on first use: it leads to the
-     * declared method and to the override in each class reached so far; later classes add theirs.
-     */
+    /** The join node for virtual calls to method `k` on `owner`, made on first use: it leads to the declared method and to the override in each class reached
+      * so far; later classes add theirs.
+      */
     private def slotFor(owner: ClassId, k: Long, found: Resolution): Int =
       val table    = virtualCalls.getOrCreate(owner.value)(new SlotTable)
       val existing = table.get(k)
@@ -724,24 +726,22 @@ private[linkage] object MethodGraph:
             from(0)
         slot
 
-    /**
-     * For every node, the guard bits that all calls reaching it carry: the greatest solution of
-     * `entry(v) = AND over edges (u, v, mask) of (mask | entry(u))`, with roots fixed at 0 and a
-     * method handle's edge contributing 0. Narrowing only, so a worklist reaches it.
-     */
+    /** For every node, the guard bits that all calls reaching it carry: the greatest solution of `entry(v) = AND over edges (u, v, mask) of (mask | entry(u))`,
+      * with roots fixed at 0 and a method handle's edge contributing 0. Narrowing only, so a worklist reaches it.
+      */
     def solveGuards(): Array[Int] =
-      val n     = nextNode
-      val entry = Array.fill(n)(NotSolved)
-      val edges = edgeFrom.size
-      val start = new Array[Int](n + 1)
+      val n                            = nextNode
+      val entry                        = Array.fill(n)(NotSolved)
+      val edges                        = edgeFrom.size
+      val start                        = new Array[Int](n + 1)
       @tailrec def count(e: Int): Unit =
         if e < edges then { start(edgeFrom(e) + 1) += 1; count(e + 1) }
       count(0)
       @tailrec def accumulate(v: Int): Unit =
         if v < n then { start(v + 1) += start(v); accumulate(v + 1) }
       accumulate(0)
-      val fill  = java.util.Arrays.copyOf(start, n)
-      val order = new Array[Int](edges)
+      val fill                         = java.util.Arrays.copyOf(start, n)
+      val order                        = new Array[Int](edges)
       @tailrec def place(e: Int): Unit =
         if e < edges then
           val u = edgeFrom(e)
@@ -750,8 +750,8 @@ private[linkage] object MethodGraph:
           place(e + 1)
       place(0)
 
-      val queue  = new IntList
-      val queued = new BitSet
+      val queue                       = new IntList
+      val queued                      = new BitSet
       @tailrec def seed(r: Int): Unit =
         if r >= 0 && r < n then
           entry(r) = 0
@@ -762,10 +762,10 @@ private[linkage] object MethodGraph:
       // Narrows the target of each edge leaving `u`, queueing the ones that changed.
       @tailrec def relax(u: Int, k: Int): Unit =
         if k < start(u + 1) then
-          val edgeId = order(k)
-          val target = edgeTo(edgeId)
-          val mask   = edgeMask(edgeId)
-          val carried = if mask == Unguarded then 0 else mask | entry(u)
+          val edgeId   = order(k)
+          val target   = edgeTo(edgeId)
+          val mask     = edgeMask(edgeId)
+          val carried  = if mask == Unguarded then 0 else mask | entry(u)
           val narrowed = if entry(target) == NotSolved then carried else entry(target) & carried
           if narrowed != entry(target) then
             entry(target) = narrowed

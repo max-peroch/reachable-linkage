@@ -17,7 +17,7 @@ private[linkage] final class LongSet:
   def add(key: Long): Boolean =
     if (size + 1) * 2 > mask + 1 then grow()
     @tailrec def probe(i: Int): Int = if used(i) && keys(i) != key then probe((i + 1) & mask) else i
-    val i = probe(slot(key, mask))
+    val i                           = probe(slot(key, mask))
     if used(i) then false
     else
       used(i) = true
@@ -43,7 +43,7 @@ private[linkage] final class LongSet:
     mask = (mask + 1) * 2 - 1
     used = new Array[Boolean](mask + 1)
     keys = new Array[Long](mask + 1)
-    @tailrec def free(j: Int): Int = if used(j) then free((j + 1) & mask) else j
+    @tailrec def free(j: Int): Int  = if used(j) then free((j + 1) & mask) else j
     @tailrec def from(i: Int): Unit =
       if i < oldKeys.length then
         if oldUsed(i) then

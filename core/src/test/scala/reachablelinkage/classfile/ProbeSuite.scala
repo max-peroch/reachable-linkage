@@ -8,8 +8,8 @@ class ProbeSuite extends munit.FunSuite:
 
   private inline def caseCount[T](using m: Mirror.SumOf[T]): Int = constValueTuple[m.MirroredElemLabels].size
 
-  private val samples: List[Probe] = List(
-    Probe.ClassName("a/b/C"), Probe.NameTail("/kqueue/KQueue"), Probe.MethodName("run"), Probe.LambdaInterface("scala/runtime/java8/JFunction1"))
+  private val samples: List[Probe] =
+    List(Probe.ClassName("a/b/C"), Probe.NameTail("/kqueue/KQueue"), Probe.MethodName("run"), Probe.LambdaInterface("scala/runtime/java8/JFunction1"))
 
   test("every kind of probe is sampled, and each survives encoding and decoding") {
     assertEquals(samples.map(_.getClass).distinct.size, caseCount[Probe], "a sample per kind")

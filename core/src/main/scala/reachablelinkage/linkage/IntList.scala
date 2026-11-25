@@ -5,8 +5,8 @@ private[linkage] final class IntList:
   private var a = new Array[Int](16)
   private var n = 0
 
-  def isEmpty: Boolean = n == 0
-  def size: Int        = n
+  def isEmpty: Boolean   = n == 0
+  def size: Int          = n
   def apply(i: Int): Int = a(i)
 
   def push(x: Int): Unit =

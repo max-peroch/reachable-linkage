@@ -5,19 +5,18 @@ import java.nio.file.Paths
 import reachablelinkage.classpath.{ClassIndex, ClassSource}
 import reachablelinkage.symbols.Symbols
 
-/**
- * Method precision on real code: scan a whole classpath (every class is checked, as with
- * `missinglinkScanDependencies := true`) but measure reachability from the compiler jar alone, the
- * way an application depends on its libraries. Method precision must report exactly the conflicts
- * Class precision does, and the call graph is what separates the ones the app can hit.
- */
+/** Method precision on real code: scan a whole classpath (every class is checked, as with `missinglinkScanDependencies := true`) but measure reachability from
+  * the compiler jar alone, the way an application depends on its libraries. Method precision must report exactly the conflicts Class precision does, and the
+  * call graph is what separates the ones the app can hit.
+  */
 class RealJarsMethodPrecisionSuite extends munit.FunSuite:
   override def munitTimeout: scala.concurrent.duration.Duration = scala.concurrent.duration.Duration(10, "min")
 
   private val props =
     val p  = new java.util.Properties()
     val in = getClass.getResourceAsStream("/scala-compilers.properties")
-    try p.load(in) finally in.close()
+    try p.load(in)
+    finally in.close()
     p
 
   // (conflicts at Class precision, of which reachable from the compiler jar). The 2.12 ones are inside the

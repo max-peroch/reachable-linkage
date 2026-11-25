@@ -1,9 +1,8 @@
 package reachablelinkage.classfile
 
-/**
- * The error types a `catch` can name that matter to linkage, as bits. The parser records, for each
- * reference inside a protected range, which of these the enclosing handlers catch.
- */
+/** The error types a `catch` can name that matter to linkage, as bits. The parser records, for each reference inside a protected range, which of these the
+  * enclosing handlers catch.
+  */
 private[reachablelinkage] object Guards:
   val NoClassDef: Int              = 1
   val NoSuchMethod: Int            = 2
@@ -22,14 +21,14 @@ private[reachablelinkage] object Guards:
 
   /** The bit for a caught exception type (internal name), or 0 if it cannot catch a linkage error. */
   def bitOf(caught: String): Int = caught match
-    case "java/lang/NoClassDefFoundError"          => NoClassDef
-    case "java/lang/NoSuchMethodError"             => NoSuchMethod
-    case "java/lang/NoSuchFieldError"              => NoSuchField
-    case "java/lang/IncompatibleClassChangeError"  => IncompatibleClassChange
-    case "java/lang/IllegalAccessError"            => IllegalAccess
-    case "java/lang/AbstractMethodError"           => AbstractMethod
-    case "java/lang/InstantiationError"            => Instantiation
-    case "java/lang/LinkageError"                  => Linkage
-    case "java/lang/Error"                         => Error
-    case "java/lang/Throwable"                     => Throwable
-    case _                                         => 0
+    case "java/lang/NoClassDefFoundError"         => NoClassDef
+    case "java/lang/NoSuchMethodError"            => NoSuchMethod
+    case "java/lang/NoSuchFieldError"             => NoSuchField
+    case "java/lang/IncompatibleClassChangeError" => IncompatibleClassChange
+    case "java/lang/IllegalAccessError"           => IllegalAccess
+    case "java/lang/AbstractMethodError"          => AbstractMethod
+    case "java/lang/InstantiationError"           => Instantiation
+    case "java/lang/LinkageError"                 => Linkage
+    case "java/lang/Error"                        => Error
+    case "java/lang/Throwable"                    => Throwable
+    case _                                        => 0

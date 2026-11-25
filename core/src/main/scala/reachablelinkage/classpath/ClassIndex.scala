@@ -6,18 +6,16 @@ import scala.collection.mutable.ArrayBuffer
 import reachablelinkage.classfile.{ClassFileError, ClassInfo, ClassParser, ParseDetail}
 import reachablelinkage.symbols.{ClassId, Symbols}
 
-/**
- * Classpath-ordered index. Construction reads only tables of contents; a class is parsed the
- * first time something asks for it, then kept. First entry on the classpath wins, as in the JVM.
- * Not thread-safe.
- */
+/** Classpath-ordered index. Construction reads only tables of contents; a class is parsed the first time something asks for it, then kept. First entry on the
+  * classpath wins, as in the JVM. Not thread-safe.
+  */
 final class ClassIndex(val sources: IndexedSeq[ClassSource], val syms: Symbols):
-  private var srcOf = Array.fill(1024)(-1)
-  private var parsed   = new Array[ClassInfo | Null](1024)
-  private val failed   = new java.util.HashMap[Int, ClassFileError]()
-  private val parses   = new Array[Int](sources.length)
-  private val loads    = new Array[Int](sources.length)
-  private val members  = sources.map(_ => ArrayBuffer.empty[ClassId])
+  private var srcOf   = Array.fill(1024)(-1)
+  private var parsed  = new Array[ClassInfo | Null](1024)
+  private val failed  = new java.util.HashMap[Int, ClassFileError]()
+  private val parses  = new Array[Int](sources.length)
+  private val loads   = new Array[Int](sources.length)
+  private val members = sources.map(_ => ArrayBuffer.empty[ClassId])
 
   sources.iterator.zipWithIndex.foreach: (src, i) =>
     src.classNames.foreach: name =>
@@ -30,7 +28,7 @@ final class ClassIndex(val sources: IndexedSeq[ClassSource], val syms: Symbols):
 
   private def ensure(i: Int): Unit =
     if i >= srcOf.length then
-      val n = math.max(i + 1, srcOf.length * 2)
+      val n   = math.max(i + 1, srcOf.length * 2)
       val old = srcOf.length
       srcOf = Arrays.copyOf(srcOf, n)
       Arrays.fill(srcOf, old, n, -1)
@@ -83,8 +81,7 @@ final class ClassIndex(val sources: IndexedSeq[ClassSource], val syms: Symbols):
   /** Re-reads a class with line numbers recorded, for reporting. Not cached; null if unreadable. */
   private[reachablelinkage] def parseWithPositions(id: ClassId): ClassInfo | Null =
     if !exists(id) then null
-    else
-      sources(srcOf(id.value)).read(syms.className(id)).flatMap(ClassParser.parse(_, syms, ParseDetail.WithPositions).toOption).orNull
+    else sources(srcOf(id.value)).read(syms.className(id)).flatMap(ClassParser.parse(_, syms, ParseDetail.WithPositions).toOption).orNull
 
   /** The parsed class, or null when absent or unreadable. */
   private[reachablelinkage] def get(id: ClassId): ClassInfo | Null =
@@ -93,16 +90,17 @@ final class ClassIndex(val sources: IndexedSeq[ClassSource], val syms: Symbols):
       val hit = parsed(id.value)
       if hit != null || failed.containsKey(id.value) then hit
       else
-        val src = sources(srcOf(id.value))
+        val src        = sources(srcOf(id.value))
         val summarized = src.summarized(syms.className(id), syms)
         if summarized != null then
           loads(srcOf(id.value)) += 1
           parsed(id.value) = summarized
           summarized
-        else src.read(syms.className(id)) match
-          case None => failed.put(id.value, ClassFileError.Unavailable); null
-          case Some(bytes) =>
-            parses(srcOf(id.value)) += 1
-            ClassParser.parse(bytes, syms) match
-              case Right(info) => parsed(id.value) = info; info
-              case Left(err)   => failed.put(id.value, err); null
+        else
+          src.read(syms.className(id)) match
+            case None        => failed.put(id.value, ClassFileError.Unavailable); null
+            case Some(bytes) =>
+              parses(srcOf(id.value)) += 1
+              ClassParser.parse(bytes, syms) match
+                case Right(info) => parsed(id.value) = info; info
+                case Left(err)   => failed.put(id.value, err); null

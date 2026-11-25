@@ -6,13 +6,11 @@ import java.nio.file.{Path, Paths}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
-/**
- * The running JDK's classes. The listing comes from [[JdkListing]] (from disk when a cache directory
- * is given and holds a valid one); class bytes are read lazily through the module system, one
- * `ModuleReader` per module, opened when first needed.
- */
+/** The running JDK's classes. The listing comes from [[JdkListing]] (from disk when a cache directory is given and holds a valid one); class bytes are read
+  * lazily through the module system, one `ModuleReader` per module, opened when first needed.
+  */
 private[classpath] final class JrtSource(cacheDirectory: Option[Path]) extends ClassSource:
-  private val listing = JdkListing.load(cacheDirectory)
+  private val listing       = JdkListing.load(cacheDirectory)
   private val moduleOfClass = new java.util.HashMap[String, Integer](listing.names.length * 2)
   listing.names.indices.foreach(i => moduleOfClass.put(listing.names(i), Integer.valueOf(listing.moduleOf(i))))
 
@@ -35,7 +33,7 @@ private[classpath] final class JrtSource(cacheDirectory: Option[Path]) extends C
   override def isExported(internalName: String): Boolean =
     moduleOfClass.get(internalName) match
       case null => true
-      case m =>
+      case m    =>
         val dot = internalName.lastIndexOf('/')
         // A module the JDK no longer has, or a class in the unnamed package, tells us nothing: not a reason to report.
         dot < 0 || exportedBy(m.intValue).forall(_.contains(internalName.substring(0, dot).replace('/', '.')))
@@ -48,24 +46,30 @@ private[classpath] final class JrtSource(cacheDirectory: Option[Path]) extends C
   def read(internalName: String): Option[Array[Byte]] =
     moduleOfClass.get(internalName) match
       case null => None
-      case m =>
+      case m    =>
         // A module the listing names but the JDK no longer has makes its classes unreadable, not an error.
         readerFor(m.intValue).flatMap: reader =>
-          reader.read(internalName + ".class").toScala.map: buffer =>
-            val bytes = new Array[Byte](buffer.remaining)
-            buffer.get(bytes)
-            reader.release(buffer)
-            bytes
+          reader
+            .read(internalName + ".class")
+            .toScala
+            .map: buffer =>
+              val bytes = new Array[Byte](buffer.remaining)
+              buffer.get(bytes)
+              reader.release(buffer)
+              bytes
 
   private def readerFor(module: Int): Option[ModuleReader] =
     readers(module) match
       case null =>
         // A module whose reader cannot be opened makes its classes unreadable, not an error.
         try
-          finder.find(listing.modules(module)).toScala.map: ref =>
-            val opened = ref.open()
-            readers(module) = opened
-            opened
+          finder
+            .find(listing.modules(module))
+            .toScala
+            .map: ref =>
+              val opened = ref.open()
+              readers(module) = opened
+              opened
         catch case _: java.io.IOException => None
       case existing => Some(existing)
 

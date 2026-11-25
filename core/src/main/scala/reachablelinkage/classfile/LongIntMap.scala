@@ -2,10 +2,9 @@ package reachablelinkage.classfile
 
 import scala.annotation.tailrec
 
-/**
- * Fixed-capacity open-addressing map from long keys to non-negative int values, built once and then
- * only read. Used to find a method's index from its (name, descriptor) key without boxing.
- */
+/** Fixed-capacity open-addressing map from long keys to non-negative int values, built once and then only read. Used to find a method's index from its (name,
+  * descriptor) key without boxing.
+  */
 private[classfile] final class LongIntMap(expected: Int):
   private val mask = Integer.highestOneBit(math.max(expected, 1) * 2 - 1) * 2 - 1
   private val keys = new Array[Long](mask + 1)
@@ -18,7 +17,7 @@ private[classfile] final class LongIntMap(expected: Int):
 
   def put(key: Long, value: Int): Unit =
     @tailrec def free(i: Int): Int = if vals(i) != 0 && keys(i) != key then free((i + 1) & mask) else i
-    val i = free(slot(key))
+    val i                          = free(slot(key))
     keys(i) = key
     vals(i) = value + 1
 

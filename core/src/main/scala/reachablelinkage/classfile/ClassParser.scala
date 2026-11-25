@@ -8,18 +8,14 @@ import scala.util.chaining.*
 
 import reachablelinkage.symbols.{ClassId, Symbols}
 
-/**
- * Parses one class file with the ASM visitor API. No ClassNode and no frames. Debug info is skipped
- * unless `detail` is [[ParseDetail.WithPositions]], which reporting uses to recover method and line of each reference.
- * Both modes run the same visitor, so reference `i` is the same instruction in either.
- */
+/** Parses one class file with the ASM visitor API. No ClassNode and no frames. Debug info is skipped unless `detail` is [[ParseDetail.WithPositions]], which
+  * reporting uses to recover method and line of each reference. Both modes run the same visitor, so reference `i` is the same instruction in either.
+  */
 private[reachablelinkage] object ClassParser:
 
-  /**
-   * Bump this whenever what `parse` produces for the same bytes changes (a new `ClassInfo` field, a new
-   * kind of reference recorded, a different encoding). It is written into every cached jar summary, so
-   * a bump makes every old summary stale instead of silently wrong.
-   */
+  /** Bump this whenever what `parse` produces for the same bytes changes (a new `ClassInfo` field, a new kind of reference recorded, a different encoding). It
+    * is written into every cached jar summary, so a bump makes every old summary stale instead of silently wrong.
+    */
   val Version: Int = 17
 
   /** Highest class file major version we accept (Java 25). */
@@ -32,7 +28,7 @@ private[reachablelinkage] object ClassParser:
     else if major > MaxMajor then Left(ClassFileError.UnsupportedVersion(major))
     else
       try
-        val v = new Collector(syms, detail)
+        val v     = new Collector(syms, detail)
         val flags = detail match
           case ParseDetail.WithPositions => ClassReader.SKIP_FRAMES
           case ParseDetail.Lean          => ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES
@@ -41,35 +37,35 @@ private[reachablelinkage] object ClassParser:
       catch case e: RuntimeException => Left(ClassFileError.Malformed(String.valueOf(e.getMessage)))
 
   private final class Collector(syms: Symbols, detail: ParseDetail) extends ClassVisitor(Opcodes.ASM9):
-    private val withPositions = detail == ParseDetail.WithPositions
-    private var id: ClassId           = ClassId.None
-    private var access                = 0
-    private var superId: ClassId      = ClassId.None
+    private val withPositions          = detail == ParseDetail.WithPositions
+    private var id: ClassId            = ClassId.None
+    private var access                 = 0
+    private var superId: ClassId       = ClassId.None
     private var ifaces: Array[ClassId] = Array.empty
-    private val methods              = ArrayBuffer.empty[Member]
-    private val fields               = ArrayBuffer.empty[Member]
-    private val mrefs                = new IntBuf
-    private val frefs                = new IntBuf
-    private val crefs                = new IntBuf
-    private val mstart               = new IntBuf
-    private val fstart               = new IntBuf
-    private val cstart               = new IntBuf
-    private val guards               = new IntBuf
-    private val probes               = ArrayBuffer.empty[Probe]
-    private val annotations          = new IntBuf
-    private val newRefs              = new IntBuf
-    private val fieldWrites          = new IntBuf
-    private val signatureTypes       = new IntBuf
-    private val literalArgs          = new IntBuf
+    private val methods                = ArrayBuffer.empty[Member]
+    private val fields                 = ArrayBuffer.empty[Member]
+    private val mrefs                  = new IntBuf
+    private val frefs                  = new IntBuf
+    private val crefs                  = new IntBuf
+    private val mstart                 = new IntBuf
+    private val fstart                 = new IntBuf
+    private val cstart                 = new IntBuf
+    private val guards                 = new IntBuf
+    private val probes                 = ArrayBuffer.empty[Probe]
+    private val annotations            = new IntBuf
+    private val newRefs                = new IntBuf
+    private val fieldWrites            = new IntBuf
+    private val signatureTypes         = new IntBuf
+    private val literalArgs            = new IntBuf
     // `.pkg.Class` constants, which only count if this class loads a class by name; and whether it does.
-    private val fragments            = scala.collection.mutable.LinkedHashSet.empty[String]
-    private var loadsByName          = false
-    private val handlers             = new HandlerTracker
-    private val mpos                 = new IntBuf
-    private val fpos                 = new IntBuf
-    private val cpos                 = new IntBuf
-    private var curMethod            = -1
-    private var curLine              = 0
+    private val fragments   = scala.collection.mutable.LinkedHashSet.empty[String]
+    private var loadsByName = false
+    private val handlers    = new HandlerTracker
+    private val mpos        = new IntBuf
+    private val fpos        = new IntBuf
+    private val cpos        = new IntBuf
+    private var curMethod   = -1
+    private var curLine     = 0
     // The last string constant loaded in this method that no call has used up (a reflective member name).
     private var lastConst: String | Null = null
     // The class literals (`Foo.class`) still on this method's operand stack, so a call can tell which are its arguments.
@@ -80,11 +76,28 @@ private[reachablelinkage] object ClassParser:
       if loadsByName && fragments.nonEmpty then probes ++ fragments.map(Probe.NameTail(_)) else probes
 
     def result: ClassInfo =
-      ClassInfo(id, access, superId, ifaces, methods.toArray, fields.toArray,
-        mrefs.toArray, frefs.toArray, crefs.toArray,
-        closed(mstart, mrefs.length / 4), closed(fstart, frefs.length / 3), closed(cstart, crefs.length),
-        guards.toArray, withFragments.map(Probe.encode).toArray, annotations.toArray, newRefs.toArray, fieldWrites.toArray, signatureTypes.toArray, literalArgs.toArray,
-        if withPositions then Positions(mpos.toArray, fpos.toArray, cpos.toArray) else null)
+      ClassInfo(
+        id,
+        access,
+        superId,
+        ifaces,
+        methods.toArray,
+        fields.toArray,
+        mrefs.toArray,
+        frefs.toArray,
+        crefs.toArray,
+        closed(mstart, mrefs.length / 4),
+        closed(fstart, frefs.length / 3),
+        closed(cstart, crefs.length),
+        guards.toArray,
+        withFragments.map(Probe.encode).toArray,
+        annotations.toArray,
+        newRefs.toArray,
+        fieldWrites.toArray,
+        signatureTypes.toArray,
+        literalArgs.toArray,
+        if withPositions then Positions(mpos.toArray, fpos.toArray, cpos.toArray) else null
+      )
 
     /** The per-method start offsets plus the end of the last method. */
     private def closed(starts: IntBuf, end: Int): Array[Int] =
@@ -124,10 +137,9 @@ private[reachablelinkage] object ClassParser:
           // A class named by a string (`@ConditionalOnClass(name = "a.B")`): kind 4, so a rule can ask whether it is present without loading it.
           case s: String =>
             val internal = ProbeNames.internalName(s)
-            if internal != null then
-              addAnnotationEntry(AnnotationEntries.NamedClassValue, method, annotation, syms.classId(internal.nn).value)
+            if internal != null then addAnnotationEntry(AnnotationEntries.NamedClassValue, method, annotation, syms.classId(internal.nn).value)
           case _ => ()
-      override def visitArray(name: String): AnnotationVisitor = this
+      override def visitArray(name: String): AnnotationVisitor                    = this
       override def visitAnnotation(name: String, desc: String): AnnotationVisitor = this
 
     /** Records an annotation on the class (`kind` 0, `member` -1), a method (1) or a field (3). */
@@ -143,24 +155,24 @@ private[reachablelinkage] object ClassParser:
 
     /** The annotations of the field just declared: one visitor serves every field, told which one it is on. */
     private object FieldBody extends FieldVisitor(Opcodes.ASM9):
-      var field = -1
+      var field                                                                              = -1
       override def visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor | Null = annotated(AnnotationEntries.OnField, field, desc, visible)
 
     /** Records the classes a generic signature names (type arguments, bounds and the rest) for member `member` of `kind` (0 method, 1 field). */
     private def signature(kind: Int, member: Int, sig: String | Null): Unit =
       if sig != null then
         // This member's entries are the last ones added, and a signature names few classes, so a scan of them finds a repeat without boxing.
-        val from = signatureTypes.length
+        val from                                    = signatureTypes.length
         @tailrec def known(i: Int, c: Int): Boolean = i < signatureTypes.length && (signatureTypes(i + 2) == c || known(i + 3, c))
-        def add(name: String): Unit =
+        def add(name: String): Unit                 =
           val c = syms.classId(name).value
           if !known(from, c) then { signatureTypes.add(kind); signatureTypes.add(member); signatureTypes.add(c) }
         // One visitor per class type: a type argument gets its own, so it cannot overwrite the outer class `Outer<A>.Inner<B>` is read through.
         final class Names extends SignatureVisitor(Opcodes.ASM9):
-          private var current = ""
+          private var current                             = ""
           override def visitClassType(name: String): Unit = { current = name; add(name) }
           // `Outer<A>.Inner<B>`: the inner class is `Outer$Inner`.
-          override def visitInnerClassType(name: String): Unit = { current = current + "$" + name; add(current) }
+          override def visitInnerClassType(name: String): Unit             = { current = current + "$" + name; add(current) }
           override def visitTypeArgument(wildcard: Char): SignatureVisitor = new Names
         new SignatureReader(sig.nn).accept(new Names)
 
@@ -209,7 +221,7 @@ private[reachablelinkage] object ClassParser:
         else if (op >= IADD && op <= DREM) || (op >= ISHL && op <= LXOR) || (op >= LCMP && op <= DCMPG) then literals.effect(2, 1)
         else if (op >= INEG && op <= DNEG) || (op >= I2L && op <= I2S) || op == ARRAYLENGTH then literals.effect(1, 1)
         else if op == MONITORENTER || op == MONITOREXIT then literals.effect(1, 0)
-        else literals.clear()   // pop2, dup2, dup_x, swap, returns, athrow: not followed
+        else literals.clear() // pop2, dup2, dup_x, swap, returns, athrow: not followed
 
       private def callOf(isStatic: Boolean): CallKind = if isStatic then CallKind.Static else CallKind.Instance
 
@@ -221,11 +233,11 @@ private[reachablelinkage] object ClassParser:
         handlers.methodInsn(name)
         callTo(owner, name, desc, callOf(op == Opcodes.INVOKESTATIC), itf)
         if !literals.isEmpty then
-          val argc = Type.getArgumentTypes(desc).length
-          val pops = if op == Opcodes.INVOKESTATIC then argc else argc + 1
+          val argc   = Type.getArgumentTypes(desc).length
+          val pops   = if op == Opcodes.INVOKESTATIC then argc else argc + 1
           val result = Type.getReturnType(desc)
           // A constructor leaves the new object under its arguments, and an object result stands for what it was given.
-          val carry  = name == "<init>" || result.getSort == Type.OBJECT || result.getSort == Type.ARRAY
+          val carry = name == "<init>" || result.getSort == Type.OBJECT || result.getSort == Type.ARRAY
           literals.call(pops, if result == Type.VOID_TYPE then 0 else 1, carry): lit =>
             literalArgs.add(cls(owner)); literalArgs.add(syms.nameId(name).value); literalArgs.add(lit)
         if ReflectionCalls.isClassLoad(owner, name) then loadsByName = true
@@ -249,7 +261,7 @@ private[reachablelinkage] object ClassParser:
         guarded(1, frefs.length / 3 - 1)
 
       override def visitTypeInsn(op: Int, tpe: String): Unit =
-        if op == Opcodes.NEW then literals.effect(0, 1) else literals.effect(1, 1)   // anewarray, checkcast, instanceof
+        if op == Opcodes.NEW then literals.effect(0, 1) else literals.effect(1, 1) // anewarray, checkcast, instanceof
         handlers.typeInsn(op)
         if op != Opcodes.ANEWARRAY then
           crefs.add(cls(tpe)); at(cpos)
@@ -260,7 +272,7 @@ private[reachablelinkage] object ClassParser:
       override def visitLdcInsn(value: Object): Unit =
         handlers.other()
         value match
-          case t: Type   =>
+          case t: Type =>
             typeRef(t)
             if t.getSort == Type.OBJECT then literals.push(cls(t.getInternalName)) else literals.effect(0, 1)
           case s: String =>
@@ -292,7 +304,7 @@ private[reachablelinkage] object ClassParser:
       override def visitVarInsn(op: Int, v: Int): Unit =
         if op >= Opcodes.ILOAD && op <= Opcodes.ALOAD then literals.effect(0, 1)
         else if op >= Opcodes.ISTORE && op <= Opcodes.ASTORE then literals.effect(1, 0)
-        else literals.clear()   // ret
+        else literals.clear() // ret
         handlers.varInsn(op, v)
 
       override def visitInsn(op: Int): Unit =
@@ -301,11 +313,11 @@ private[reachablelinkage] object ClassParser:
         else if op >= Opcodes.IRETURN && op <= Opcodes.RETURN then handlers.branch()
         else handlers.other()
 
-      override def visitJumpInsn(op: Int, label: Label): Unit = { literals.clear(); handlers.branch() }
-      override def visitTableSwitchInsn(min: Int, max: Int, dflt: Label, labels: Label*): Unit = { literals.clear(); handlers.branch() }
+      override def visitJumpInsn(op: Int, label: Label): Unit                                       = { literals.clear(); handlers.branch() }
+      override def visitTableSwitchInsn(min: Int, max: Int, dflt: Label, labels: Label*): Unit      = { literals.clear(); handlers.branch() }
       override def visitLookupSwitchInsn(dflt: Label, keys: Array[Int], labels: Array[Label]): Unit = { literals.clear(); handlers.branch() }
-      override def visitIntInsn(op: Int, operand: Int): Unit =
-        if op == Opcodes.NEWARRAY then literals.effect(1, 1) else literals.effect(0, 1)   // bipush, sipush
+      override def visitIntInsn(op: Int, operand: Int): Unit                                        =
+        if op == Opcodes.NEWARRAY then literals.effect(1, 1) else literals.effect(0, 1) // bipush, sipush
         handlers.other()
       override def visitIincInsn(v: Int, inc: Int): Unit = handlers.other()
 

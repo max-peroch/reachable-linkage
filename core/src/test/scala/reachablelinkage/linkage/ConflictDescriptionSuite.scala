@@ -8,11 +8,10 @@ import reachablelinkage.api.ConflictCategory
 import reachablelinkage.classfile.{ClassFileError, Guards}
 import reachablelinkage.symbols.Symbols
 
-/**
- * `Conflict.describe` holds everything about a kind of conflict in one place (the class it is in, its facade category, which
- * handlers stop it, what it names, its texts). These tests keep it complete: a new case that is added without being described, or
- * a category the facade lacks, fails here and not in a rarely-run corner.
- */
+/** `Conflict.describe` holds everything about a kind of conflict in one place (the class it is in, its facade category, which handlers stop it, what it names,
+  * its texts). These tests keep it complete: a new case that is added without being described, or a category the facade lacks, fails here and not in a
+  * rarely-run corner.
+  */
 class ConflictDescriptionSuite extends munit.FunSuite:
 
   private val syms = new Symbols
@@ -68,16 +67,21 @@ class ConflictDescriptionSuite extends munit.FunSuite:
 
   test("only conflicts with an instruction to protect can be guarded, and each by the error the JVM throws") {
     def stops(conflict: Conflict): Int = conflict.describe.stoppedBy
-    val unguardable = examples.filter(stops(_) == 0).map(_.getClass.getSimpleName).toSet
-    assertEquals(unguardable, Set("MissingProvider", "AbstractMethodNotImplemented", "Unreadable", "IncompatibleHierarchy", "OverridesFinalMethod", "MissingSignatureType"))
+    val unguardable                    = examples.filter(stops(_) == 0).map(_.getClass.getSimpleName).toSet
+    assertEquals(
+      unguardable,
+      Set("MissingProvider", "AbstractMethodNotImplemented", "Unreadable", "IncompatibleHierarchy", "OverridesFinalMethod", "MissingSignatureType")
+    )
     assert((stops(examples.head) & Guards.NoClassDef) != 0, "a missing class is stopped by NoClassDefFoundError")
     assert((stops(Conflict.MissingMethod(a, n, d, b)) & Guards.NoSuchMethod) != 0)
     assert((stops(Conflict.MissingField(a, n, d, b)) & Guards.NoSuchField) != 0)
     assert((stops(Conflict.NotExported(a, b)) & Guards.IllegalAccess) != 0)
     assert((stops(Conflict.AbstractInstantiated(a, b, Uninstantiable.Abstract)) & Guards.Instantiation) != 0)
     // Every guardable one is also stopped by the broad errors (LinkageError, Error, Throwable) and by nothing as narrow as Exception.
-    examples.filter(stops(_) != 0).foreach: conflict =>
-      assert((stops(conflict) & (Guards.Linkage | Guards.Error | Guards.Throwable)) == (Guards.Linkage | Guards.Error | Guards.Throwable), conflict.toString)
+    examples
+      .filter(stops(_) != 0)
+      .foreach: conflict =>
+        assert((stops(conflict) & (Guards.Linkage | Guards.Error | Guards.Throwable)) == (Guards.Linkage | Guards.Error | Guards.Throwable), conflict.toString)
   }
 
   test("a missing provider names the entry that ships the stale file, and only it") {
@@ -87,8 +91,21 @@ class ConflictDescriptionSuite extends munit.FunSuite:
 
   test("a member is named exactly when the conflict is about a member") {
     val withMember = examples.filter(_.describe.member.nonEmpty).map(_.getClass.getSimpleName).toSet
-    assertEquals(withMember, Set("MissingMethod", "MethodKindChanged", "MissingField", "InaccessibleMethod", "InaccessibleField",
-      "AbstractMethodNotImplemented", "OverridesFinalMethod", "InterfaceKindChanged", "FinalFieldWritten", "MissingSignatureType"))
+    assertEquals(
+      withMember,
+      Set(
+        "MissingMethod",
+        "MethodKindChanged",
+        "MissingField",
+        "InaccessibleMethod",
+        "InaccessibleField",
+        "AbstractMethodNotImplemented",
+        "OverridesFinalMethod",
+        "InterfaceKindChanged",
+        "FinalFieldWritten",
+        "MissingSignatureType"
+      )
+    )
   }
 
   test("the reasons the sbt plugin prints keep missinglink's wording, which differs from the one-line text") {
@@ -98,7 +115,6 @@ class ConflictDescriptionSuite extends munit.FunSuite:
     assertEquals(Conflict.MethodKindChanged(a, n, d, b).describe.reason(syms), "Method changed between static and instance: pkg.A.m()")
     assertEquals(Conflict.MissingClass(a, b).show(syms), "pkg.B: class pkg.A is missing")
   }
-
 
   test("the categories flagged as missinglink's are exactly the three missinglink-core defines") {
     val theirs = com.spotify.missinglink.Conflict.ConflictCategory.values.map(_.name).toSet
@@ -116,9 +132,11 @@ class ConflictDescriptionSuite extends munit.FunSuite:
       conflict(ConflictCategory.ABSTRACT_METHOD_NOT_IMPLEMENTED, ConflictLabel.REACHABLE),
       conflict(ConflictCategory.FIELD_NOT_FOUND, ConflictLabel.REACHABLE),
       conflict(ConflictCategory.NOT_EXPORTED, ConflictLabel.REACHABLE),
-      conflict(ConflictCategory.METHOD_SIGNATURE_NOT_FOUND, ConflictLabel.GUARDED))
+      conflict(ConflictCategory.METHOD_SIGNATURE_NOT_FOUND, ConflictLabel.GUARDED)
+    )
     val result = LinkageResult(java.util.List.copyOf(all.asJava), java.util.List.of(), java.util.List.of())
-    assertEquals(result.missinglinkReports().asScala.map(_.category).toList,
-      List(ConflictCategory.CLASS_NOT_FOUND, ConflictCategory.FIELD_NOT_FOUND, ConflictCategory.METHOD_SIGNATURE_NOT_FOUND))
+    assertEquals(
+      result.missinglinkReports().asScala.map(_.category).toList,
+      List(ConflictCategory.CLASS_NOT_FOUND, ConflictCategory.FIELD_NOT_FOUND, ConflictCategory.METHOD_SIGNATURE_NOT_FOUND)
+    )
   }
-

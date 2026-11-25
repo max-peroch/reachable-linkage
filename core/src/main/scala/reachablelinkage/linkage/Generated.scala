@@ -3,11 +3,10 @@ package reachablelinkage.linkage
 import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.symbols.{ClassId, Symbols}
 
-/**
- * The classes a framework finds by adding a suffix to the name of a class it was given (jboss-logging loads `Foo_$logger` for `Foo`, as Dagger, MapStruct and
- * other annotation processors do for their output): no instruction names them. Built once per check from the classes that end with a suffix, so asking about a
- * class costs one lookup.
- */
+/** The classes a framework finds by adding a suffix to the name of a class it was given (jboss-logging loads `Foo_$logger` for `Foo`, as Dagger, MapStruct and
+  * other annotation processors do for their output): no instruction names them. Built once per check from the classes that end with a suffix, so asking about a
+  * class costs one lookup.
+  */
 private[linkage] final class Generated private (companionsByBase: Map[String, Vector[ClassId]], syms: Symbols):
 
   /** The generated companions of `c`: the classes named after it plus one of the suffixes. */

@@ -12,27 +12,21 @@ import scala.util.Using
 import reachablelinkage.classfile.{ClassInfo, ClassParser, Member}
 import reachablelinkage.symbols.{ClassId, DescId, NameId, Symbols}
 
-/**
- * A jar's classes, parsed once and kept on disk, so a later run (of any project) reads them back
- * instead of parsing them again. A summary is a pure function of the jar's class files and of the
- * parser, so it is named by a fingerprint of the jar's classes and carries the parser version.
- *
- * Ids are interned per run, so a summary has its own string tables and its own local ids. A [[Reader]]
- * decodes one class at a time and maps local ids to the current run's ids, interning a name only when
- * a decoded class uses it, which keeps class loading lazy.
- *
- * File layout (big-endian ints): magic, format version, parser version, 32-byte fingerprint; then 13
- * header ints (own-class count; class, name and descriptor string counts; offsets of the three string
- * offset tables and blobs, of the own-class index sorted by name, and of the per-local-class record
- * table; and the size of everything before the checksum, which catches a truncated file); the sections; then one record per class;
- * then a CRC-32 of all of that, so a damaged file (a flipped bit, a cut, bytes added) is never decoded: a length read from it could be
- * anything. The file is `body` followed by the 4-byte checksum. A record is: access, superclass, interfaces,
- * methods and fields as (name, descriptor, access), the three reference arrays, the three per-method
- * start arrays, the guards, and the probe strings. Anything unexpected (wrong magic, version or
- * fingerprint, a short file, a bad offset) means the file is not used.
- */
+/** A jar's classes, parsed once and kept on disk, so a later run (of any project) reads them back instead of parsing them again. A summary is a pure function
+  * of the jar's class files and of the parser, so it is named by a fingerprint of the jar's classes and carries the parser version.
+  *
+  * Ids are interned per run, so a summary has its own string tables and its own local ids. A [[Reader]] decodes one class at a time and maps local ids to the
+  * current run's ids, interning a name only when a decoded class uses it, which keeps class loading lazy.
+  *
+  * File layout (big-endian ints): magic, format version, parser version, 32-byte fingerprint; then 13 header ints (own-class count; class, name and descriptor
+  * string counts; offsets of the three string offset tables and blobs, of the own-class index sorted by name, and of the per-local-class record table; and the
+  * size of everything before the checksum, which catches a truncated file); the sections; then one record per class; then a CRC-32 of all of that, so a damaged
+  * file (a flipped bit, a cut, bytes added) is never decoded: a length read from it could be anything. The file is `body` followed by the 4-byte checksum. A
+  * record is: access, superclass, interfaces, methods and fields as (name, descriptor, access), the three reference arrays, the three per-method start arrays,
+  * the guards, and the probe strings. Anything unexpected (wrong magic, version or fingerprint, a short file, a bad offset) means the file is not used.
+  */
 private[classpath] object JarSummary:
-  val FormatVersion: Int = 2
+  val FormatVersion: Int            = 2
   private val Magic: Int            = 0x524c4a53 // "RLJS"
   private val FingerprintBytes: Int = 32
   private val HeaderStart: Int      = 12 + FingerprintBytes
@@ -40,16 +34,15 @@ private[classpath] object JarSummary:
   private val HeaderEnd: Int        = HeaderStart + HeaderInts * 4
 
   // Indices of the header ints.
-  private val NOwn = 0; private val NClassStr = 1; private val NNameStr = 2; private val NDescStr = 3
-  private val ClassOffs = 4; private val ClassBlob = 5; private val NameOffs = 6; private val NameBlob = 7
-  private val DescOffs = 8; private val DescBlob = 9; private val SortedOwn = 10; private val RecordTable = 11
+  private val NOwn      = 0; private val NClassStr = 1; private val NNameStr  = 2; private val NDescStr     = 3
+  private val ClassOffs = 4; private val ClassBlob = 5; private val NameOffs  = 6; private val NameBlob     = 7
+  private val DescOffs  = 8; private val DescBlob  = 9; private val SortedOwn = 10; private val RecordTable = 11
   private val TotalSize = 12
 
-  /**
-   * Names, sizes and CRCs of the entries the classes come from (the versioned entry for a class a multi-release jar
-   * overlays, see [[JarEntries]]), read from the central directory without touching class data. A different release that
-   * resolves to different entries therefore has a different fingerprint, and a different summary.
-   */
+  /** Names, sizes and CRCs of the entries the classes come from (the versioned entry for a class a multi-release jar overlays, see [[JarEntries]]), read from
+    * the central directory without touching class data. A different release that resolves to different entries therefore has a different fingerprint, and a
+    * different summary.
+    */
   def fingerprint(resolved: Vector[(String, JarEntry)]): Array[Byte] =
     val md = MessageDigest.getInstance("SHA-256")
     resolved.foreach: (_, e) =>
@@ -61,17 +54,16 @@ private[classpath] object JarSummary:
   def fileName(fingerprint: Array[Byte]): String =
     "jar-" + fingerprint.take(8).map(b => f"${b & 0xff}%02x").mkString + ".summary"
 
-  /**
-   * The summary of `jar`: read from `cacheDirectory` if a valid one is there, else built (every
-   * class parsed once) and saved. Never throws; a failure means no reader and the caller parses.
-   */
+  /** The summary of `jar`: read from `cacheDirectory` if a valid one is there, else built (every class parsed once) and saved. Never throws; a failure means no
+    * reader and the caller parses.
+    */
   def open(jar: JarFile, resolved: Vector[(String, JarEntry)], cacheDirectory: Path): (Reader | Null, SummaryOutcome) =
     try
       val fp   = fingerprint(resolved)
       val file = cacheDirectory.resolve(fileName(fp))
       readFile(file, fp) match
         case Some(reader) => (reader, SummaryOutcome.Loaded)
-        case None =>
+        case None         =>
           val bytes = build(jar, resolved, fp)
           val saved = writeFile(file, bytes)
           // Map the saved file so the bytes do not stay on the heap; if saving failed, use them as they are.
@@ -124,7 +116,7 @@ private[classpath] object JarSummary:
     var t = 0
     while t < syms.classCount do { sink.putInt(-1); t += 1 }
 
-    def ints(a: Array[Int]): Unit = { sink.putInt(a.length); a.foreach(sink.putInt) }
+    def ints(a: Array[Int]): Unit        = { sink.putInt(a.length); a.foreach(sink.putInt) }
     def members(ms: Array[Member]): Unit =
       sink.putInt(ms.length)
       ms.foreach(m => { sink.putInt(m.name.value); sink.putInt(m.desc.value); sink.putInt(m.access) })
@@ -169,7 +161,7 @@ private[classpath] object JarSummary:
       val bodySize = b.getInt(HeaderStart + 4 * TotalSize)
       bodySize >= HeaderEnd && b.capacity == bodySize + 4 && {
         // The whole body must match its checksum before any length in it is believed.
-        val crc = new java.util.zip.CRC32()
+        val crc  = new java.util.zip.CRC32()
         val body = b.duplicate()
         body.position(0)
         body.limit(bodySize)
@@ -195,14 +187,14 @@ private[classpath] object JarSummary:
   final class Reader(buf: ByteBuffer):
     private def header(i: Int): Int = buf.getInt(HeaderStart + 4 * i)
     // A second view of the same bytes to read ranges with: the absolute bulk `get(index, bytes)` is Java 13, and a relative one needs a position.
-    private val cursor = buf.duplicate()
+    private val cursor                                        = buf.duplicate()
     private def bytesAt(index: Int, bytes: Array[Byte]): Unit =
       cursor.position(index)
       cursor.get(bytes)
-    private val nOwn       = header(NOwn)
-    private val nClassStr  = header(NClassStr)
-    private val nNameStr   = header(NNameStr)
-    private val nDescStr   = header(NDescStr)
+    private val nOwn      = header(NOwn)
+    private val nClassStr = header(NClassStr)
+    private val nNameStr  = header(NNameStr)
+    private val nDescStr  = header(NDescStr)
 
     // The id maps belong to one run's symbol table; a different one starts them again.
     private var mappedFor: Symbols | Null = null
@@ -399,5 +391,24 @@ private[classpath] object JarSummary:
       val signatureTypes = readSignatureTypes(syms)
       val literalArgs    = readLiteralArgs(syms)
       val annotations    = readAnnotations(syms)
-      ClassInfo(ClassId(mapClass(ownLocal, syms)), access, ClassId(superName), interfaces, methods, fields,
-        methodRefs, fieldRefs, classRefs, methodRefStart, fieldRefStart, classRefStart, guards, probes, annotations, newRefs, fieldWrites, signatureTypes, literalArgs)
+      ClassInfo(
+        ClassId(mapClass(ownLocal, syms)),
+        access,
+        ClassId(superName),
+        interfaces,
+        methods,
+        fields,
+        methodRefs,
+        fieldRefs,
+        classRefs,
+        methodRefStart,
+        fieldRefStart,
+        classRefStart,
+        guards,
+        probes,
+        annotations,
+        newRefs,
+        fieldWrites,
+        signatureTypes,
+        literalArgs
+      )

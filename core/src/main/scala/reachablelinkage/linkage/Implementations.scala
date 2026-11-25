@@ -8,31 +8,28 @@ import reachablelinkage.classpath.ClassIndex
 import reachablelinkage.classfile.AccessFlags.*
 import reachablelinkage.symbols.ClassId
 
-/**
- * Finds the abstract methods a concrete class inherits but nothing implements. Method selection
- * (JVMS 5.4.6) takes the first declaration of the method along the class and its superclasses; if
- * that one is abstract, the call fails even if an interface has a default. Only when no class in
- * the chain declares it does an interface default count.
- */
+/** Finds the abstract methods a concrete class inherits but nothing implements. Method selection (JVMS 5.4.6) takes the first declaration of the method along
+  * the class and its superclasses; if that one is abstract, the call fails even if an interface has a default. Only when no class in the chain declares it does
+  * an interface default count.
+  */
 private[linkage] final class Implementations(index: ClassIndex):
 
-  /**
-   * @return for each unimplemented abstract method, the ancestor that declares it and the method.
-   *         Empty for an abstract class or interface, and when an ancestor is missing from the
-   *         classpath (the missing class is reported on its own).
-   */
+  /** @return
+    *   for each unimplemented abstract method, the ancestor that declares it and the method. Empty for an abstract class or interface, and when an ancestor is
+    *   missing from the classpath (the missing class is reported on its own).
+    */
   def unimplemented(c: ClassInfo): Vector[(ClassId, Member)] =
     if c.isInterface || c.isAbstract then Vector.empty
     else
       ancestors(c) match
         case null => Vector.empty
-        case all =>
+        case all  =>
           val seen = new LongSet
           val out  = Vector.newBuilder[(ClassId, Member)]
           all.foreach: ancestor =>
             index.get(ancestor) match
               case null => ()
-              case a =>
+              case a    =>
                 a.abstractMethods.foreach: i =>
                   val m   = a.methods(i)
                   val key = Keys.of(m.name.value, m.desc.value)
@@ -41,9 +38,9 @@ private[linkage] final class Implementations(index: ClassIndex):
 
   /** Every superclass and superinterface, or null if any of them cannot be read. */
   private def ancestors(c: ClassInfo): Array[ClassId] =
-    val seen     = new BitSet()
-    val out      = scala.collection.mutable.ArrayBuffer.empty[ClassId]
-    var complete = true
+    val seen                     = new BitSet()
+    val out                      = scala.collection.mutable.ArrayBuffer.empty[ClassId]
+    var complete                 = true
     def visit(id: ClassId): Unit =
       if !id.isNone && !seen.get(id.value) then
         seen.set(id.value)

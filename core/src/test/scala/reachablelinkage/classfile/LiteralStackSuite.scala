@@ -10,7 +10,7 @@ class LiteralStackSuite extends munit.FunSuite:
 
   test("a literal is the top of the stack until something is pushed over it") {
     val s = new LiteralStack
-    s.push(7); s.effect(0, 1); s.effect(0, 1)          // two loads above it
+    s.push(7); s.effect(0, 1); s.effect(0, 1) // two loads above it
     assertEquals(recorded(s, 3, 0), List(7), "a call popping the literal and the two values")
     assert(s.isEmpty)
   }
@@ -45,16 +45,16 @@ class LiteralStackSuite extends munit.FunSuite:
 
   test("aastore sends a literal that is the stored value into the array that stays on the stack") {
     val s = new LiteralStack
-    s.effect(0, 1); s.dup(); s.effect(0, 1)             // arr, arr, index
-    s.push(5); s.arrayStore()                            // arr, arr, index, lit -> arr
+    s.effect(0, 1); s.dup(); s.effect(0, 1) // arr, arr, index
+    s.push(5); s.arrayStore()               // arr, arr, index, lit -> arr
     assertEquals(recorded(s, 1, 0), List(5), "the call that takes the array takes the literal")
   }
 
   test("a varargs array: each literal is stored through a copy of the array, and all of them end up with the array") {
     val s = new LiteralStack
-    s.effect(0, 1); s.effect(1, 1)                                   // size, new array
-    s.dup(); s.effect(0, 1); s.push(10); s.arrayStore()              // arr[0] = A
-    s.dup(); s.effect(0, 1); s.push(20); s.arrayStore()              // arr[1] = B
+    s.effect(0, 1); s.effect(1, 1)                      // size, new array
+    s.dup(); s.effect(0, 1); s.push(10); s.arrayStore() // arr[0] = A
+    s.dup(); s.effect(0, 1); s.push(20); s.arrayStore() // arr[1] = B
     assertEquals(recorded(s, 1, 0).sorted, List(10, 20), "the call that takes the array takes both")
   }
 
@@ -75,7 +75,7 @@ class LiteralStackSuite extends munit.FunSuite:
 
   test("a call that carries gives the literals it popped to its result, and the call that takes the result is told of them") {
     val s = new LiteralStack
-    s.effect(0, 1); s.push(7)                       // a receiver, the literal
+    s.effect(0, 1); s.push(7) // a receiver, the literal
     assertEquals(recorded(s, 2, 1, carry = true), List(7), "typeFactory.constructType(Foo.class)")
     assertEquals(recorded(s, 1, 0), List(7), "and then whatever takes the JavaType")
     assert(s.isEmpty)
@@ -98,8 +98,7 @@ class LiteralStackSuite extends munit.FunSuite:
 
   test("a literal carried twice is not repeated: a result that stands for it once is one value") {
     val s = new LiteralStack
-    s.push(3); s.dup()                              // the same literal at depth 1 and 2
+    s.push(3); s.dup() // the same literal at depth 1 and 2
     assertEquals(recorded(s, 2, 1, carry = true), List(3, 3), "both copies were popped, and each is told of")
     assertEquals(recorded(s, 1, 0), List(3), "but the result carries it once")
   }
-

@@ -5,34 +5,31 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.objectweb.asm.{Label, Opcodes}
 
-/**
- * Which `catch` handlers really protect each reference in a method, worked out while ASM streams the
- * instructions past (see [[Guards]]). A `try` range protects what is inside it, but only if its handler can
- * stop the error:
- *
- *  - a handler that catches and rethrows (`catch (Throwable t) { throw t; }`, the one `try`-with-resources
- *    generates) guards nothing, because the error still escapes;
- *  - unless it looks at the exception (`getMessage`, `instanceof`, ...) to decide, as slf4j's `MDC` does: then
- *    it can swallow the one it expects, and it still guards;
- *  - a handler whose code runs straight to a `throw` (no jump, switch, return or nested range before it) always throws
- *    something, so the error escapes as another exception (`throw new IllegalStateException(msg, e)`): it guards nothing,
- *    whether or not it looks at the exception first.
- *
- * A handler's body comes after the `try` it belongs to, so the answer for a reference is only known once the
- * method has been read: [[protect]] remembers which blocks were open at the reference, and [[finish]] settles
- * every one. Nested handlers share local slots, so the exception local a handler stores is matched to the
- * innermost (latest) handler that stored it.
- *
- * Used by one parse at a time, for one method at a time ([[startMethod]]).
- */
+/** Which `catch` handlers really protect each reference in a method, worked out while ASM streams the instructions past (see [[Guards]]). A `try` range
+  * protects what is inside it, but only if its handler can stop the error:
+  *
+  *   - a handler that catches and rethrows (`catch (Throwable t) { throw t; }`, the one `try`-with-resources generates) guards nothing, because the error still
+  *     escapes;
+  *   - unless it looks at the exception (`getMessage`, `instanceof`, ...) to decide, as slf4j's `MDC` does: then it can swallow the one it expects, and it
+  *     still guards;
+  *   - a handler whose code runs straight to a `throw` (no jump, switch, return or nested range before it) always throws something, so the error escapes as
+  *     another exception (`throw new IllegalStateException(msg, e)`): it guards nothing, whether or not it looks at the exception first.
+  *
+  * A handler's body comes after the `try` it belongs to, so the answer for a reference is only known once the method has been read: [[protect]] remembers which
+  * blocks were open at the reference, and [[finish]] settles every one. Nested handlers share local slots, so the exception local a handler stores is matched
+  * to the innermost (latest) handler that stored it.
+  *
+  * Used by one parse at a time, for one method at a time ([[startMethod]]).
+  */
 private[classfile] final class HandlerTracker:
 
   /** A `try` range whose handler catches a linkage error type. `open` is true while inside the range. */
   private final class TryBlock(val start: Label, val end: Label, val handler: Label, val bit: Int):
-    var open = false
-    var rethrows = false
-    var inspects = false
+    var open         = false
+    var rethrows     = false
+    var inspects     = false
     var alwaysThrows = false
+
     /** The local the handler stores the exception in, and the order its handler was met (nested handlers share slots). */
     var slot = -1
     var seq  = 0
@@ -50,9 +47,9 @@ private[classfile] final class HandlerTracker:
   private var handlerSeq    = 0
   private var awaitingStore = false
   // True from the start of a handler while its code is a straight line (no jump, switch, return or other label yet).
-  private var straight      = false
+  private var straight = false
   // The local loaded by the previous instruction, or -1.
-  private var prevAload     = -1
+  private var prevAload = -1
 
   def startMethod(): Unit =
     blocks.clear(); pending.clear()
@@ -128,14 +125,17 @@ private[classfile] final class HandlerTracker:
 
   /** Applies `mark` to the blocks of the innermost handler that stored the exception in local `slot`. */
   private def handlerOf(slot: Int)(mark: TryBlock => Unit): Unit =
-    blocks.iterator.filter(_.slot == slot).map(_.seq).maxOption.foreach: n =>
-      blocks.foreach(b => if b.slot == slot && b.seq == n then mark(b))
+    blocks.iterator
+      .filter(_.slot == slot)
+      .map(_.seq)
+      .maxOption
+      .foreach: n =>
+        blocks.foreach(b => if b.slot == slot && b.seq == n then mark(b))
 
-  /**
-   * Settles every protected reference of the method: the bits that stay are those of blocks that were open and
-   * whose handler does not rethrow (or does, but looks at the exception first) and does not always throw. `settle(position, bits)` is
-   * called for each one, so the caller can write the answer back into its guard array.
-   */
+  /** Settles every protected reference of the method: the bits that stay are those of blocks that were open and whose handler does not rethrow (or does, but
+    * looks at the exception first) and does not always throw. `settle(position, bits)` is called for each one, so the caller can write the answer back into its
+    * guard array.
+    */
   def finish(settle: (Int, Int) => Unit): Unit =
     @tailrec def maskOf(g: PendingGuard, i: Int, mask: Int): Int =
       if i >= blocks.length || i >= 63 then mask

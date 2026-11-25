@@ -2,16 +2,15 @@ package reachablelinkage.linkage
 
 import scala.annotation.tailrec
 
-/**
- * Growing open-addressing map from a method key to the graph node that stands for "a virtual call
- * to this method on this owner". Keys can be any long, including 0.
- */
+/** Growing open-addressing map from a method key to the graph node that stands for "a virtual call to this method on this owner". Keys can be any long,
+  * including 0.
+  */
 private[linkage] final class SlotTable:
-  private var mask   = 15
-  private var used   = new Array[Boolean](mask + 1)
-  private var keys   = new Array[Long](mask + 1)
-  private var nodes  = new Array[Int](mask + 1)
-  private var size   = 0
+  private var mask  = 15
+  private var used  = new Array[Boolean](mask + 1)
+  private var keys  = new Array[Long](mask + 1)
+  private var nodes = new Array[Int](mask + 1)
+  private var size  = 0
 
   private def slot(key: Long, mask: Int): Int =
     val h = key * 0x9e3779b97f4a7c15L
@@ -30,7 +29,7 @@ private[linkage] final class SlotTable:
   def put(key: Long, node: Int): Unit =
     if (size + 1) * 2 > mask + 1 then grow()
     @tailrec def probe(i: Int): Int = if used(i) && keys(i) != key then probe((i + 1) & mask) else i
-    val i = probe(slot(key, mask))
+    val i                           = probe(slot(key, mask))
     if !used(i) then size += 1
     used(i) = true
     keys(i) = key
