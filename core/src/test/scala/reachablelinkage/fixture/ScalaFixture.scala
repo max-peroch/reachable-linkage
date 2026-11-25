@@ -22,6 +22,9 @@ object ScalaFixture:
   private def entries(v: ScalaVersion): Seq[Path] =
     classpaths.getProperty(v.key).split(java.io.File.pathSeparator).toSeq.map(Paths.get(_))
 
+  /** The jars the build resolved for a test-only configuration (`scala-compilers.properties`), by key. */
+  def jars(key: String): Seq[Path] = classpaths.getProperty(key).split(java.io.File.pathSeparator).toSeq.map(Paths.get(_))
+
   private val loaders                              = new java.util.concurrent.ConcurrentHashMap[ScalaVersion, ClassLoader]()
   private def loader(v: ScalaVersion): ClassLoader =
     loaders.computeIfAbsent(v, _ => new URLClassLoader(entries(v).map(_.toUri.toURL).toArray[URL], ClassLoader.getPlatformClassLoader))
