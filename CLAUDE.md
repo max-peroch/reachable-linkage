@@ -14,7 +14,7 @@ The code is in `core/`; the sbt plugin is a separate clone (see "The sbt plugin"
 - **Dependencies:** ASM is the only runtime dependency. No Jackson, no missinglink-core at runtime (test-only, as the parity oracle), no cats-effect/fs2/circe at runtime. Typelevel is fine in test and build (munit, ScalaCheck).
 - **JVM floor:** the core runs on **Java 8 and later**: Scala 3.3 LTS with `-release:8`, `javac --release 8`, so the compilers reject newer JDK APIs. Tests are compiled for 17. The nine facade enums are
   **Java sources** (`core/src/main/java/reachablelinkage/api`), not Scala enums: a Scala 3.3 enum extending `java.lang.Enum` has a static-init cycle that hands a Java caller `null`.
-  `ClassSource.runningJdk` reads the module image on 9+ and the boot jars on 8. `Java8Suite` needs `JAVA_8_HOME` (skipped without it).
+  `ClassSource.runningJdk` reads the module image on 9+ and the boot jars on 8. `OtherJavaSuite` runs the checker in a child JVM of the Java at `CHECK_JAVA_HOME` (skipped without it; CI sets it for 8 to 16).
 - **Isolation:** the sbt plugin loads the core in its own classloader behind a bridge that takes and returns only JDK types, because an sbt 1 plugin has Scala 2.12 and the core needs Scala 3 and 2.13.
 - **Precision and labels:** the default is `Method` (CHA call graph); `Class` is the compatibility view; `MethodRta` is opt-in (it can silently miss an instance made some way it cannot see). `Method` labels exactly
   the conflicts `Class` reports, so Method ⊆ Class holds by construction.
@@ -56,16 +56,17 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
 - **Adding a kind of conflict is one place:** the `Conflict` case, its `Conflict.describe` entry, the producer in `Checker`, and if the category is new, one case each in `linkage.Category` and the Java `ConflictCategory`.
   `ConflictDescriptionSuite` keeps this honest. Adding a kind of keep rule: the `Keep` case, its bits in `KeepRules`, the `KeepRuleKind` case and its `RuleKinds.describe` line.
 - **The facade stays Java-callable** and the bridge crosses only `java.*` types (`LinkageApiSuite`, `JavaCallerSuite`, `LinkageBridgeSuite` pin it). New request settings go on the defaulted case class and the builder, not on another constructor.
-- **Java 8 floor:** no JDK API newer than 8 in `main`; `Java8Suite` and runs on JDK 17, 21 and 25 catch regressions. javac 17 merges identical lambda bodies, so fixtures must not depend on javac's layout.
+- **Java 8 floor:** no JDK API newer than 8 in `main`; `OtherJavaSuite` and CI runs on JDK 8 to 27 catch regressions. javac 17 merges identical lambda bodies, so fixtures must not depend on javac's layout.
 - Compare timings only **interleaved or back to back** on the same machine; absolute numbers move by a factor of two between days.
 
 ## Running things
 
-- `sbt core/test` is the suite (CI runs it on JDK 17 and 25). Suites that use missinglink-core as an oracle extend `OracleSuite` (5-minute timeout; its first use builds a JDK model, about 12 s and 2 GB).
+- `sbt core/test` is the suite (CI runs it on JDK 17 to 27, and the checker itself on 8 to 16). Suites that use missinglink-core as an oracle extend `OracleSuite` (5-minute timeout; its first use builds a JDK model, about 12 s and 2 GB).
 - On demand, never in `sbt test` (test sources, plain `main`): `reachablelinkage.bench.Bench` (`app`, `ours`, `ml`), `Profile`, `LoopBench`, and in `linkage`: `Soundness`, `BlindSpots`. Real classpaths
   (Play, pekko-http, http4s, armeria, Spring Boot, sbt) are resolved offline into a scratch sbt project and passed as a file with one jar per line.
 - `tools/coverage-agent/build.sh` builds a small java agent (ASM; jar gitignored) that records the methods that ran; `Soundness` then checks that the call graph reaches them (worked example in its README). It is a dev tool, not shipped.
 - `sbt core/publishLocal` publishes `reachable-linkage-core_3` to `~/.ivy2/local`, where the plugin fetches it.
+- **Releases:** the version comes from the git tag (`sbt-ci-release`, which brings sbt-dynver); there is no `version` setting. Pushing a tag `vX.Y.Z` runs the `publish` job in CI (`sbt ci-release`, signed, to Sonatype; secrets `PGP_SECRET`, `PGP_PASSPHRASE`, `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`). Without a tag, `publishLocal` makes a `0.0.0+N-<sha>-SNAPSHOT` version. The root project is not published.
 
 ## The sbt plugin
 

@@ -1,25 +1,27 @@
 ThisBuild / scalaVersion := "3.3.7"
-ThisBuild / organization := "io.github.reachable-linkage"
-ThisBuild / version      := "0.1.0-SNAPSHOT"
+ThisBuild / organization := "io.github.max-peroch"
 ThisBuild / licenses     := List(License.Apache2)
+ThisBuild / homepage     := Some(url("https://github.com/max-peroch/reachable-linkage"))
+ThisBuild / developers   := List(Developer("max-peroch", "Maxime Perocheau", "max.peroch@hotmail.fr", url("https://perocheau.com")))
 ThisBuild / description  := "A linkage checker for the JVM that reports only the breaks an application can actually hit"
 // Binary compatibility is promised from 1.0: until then a minor version may break it.
-ThisBuild / versionScheme := Some("early-semver")
+ThisBuild / versionScheme     := Some("early-semver")
+ThisBuild / scalafmtOnCompile := true
 ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-Wunused:all")
 
 // Test-only: Scala compilers used to build fixtures, each resolved into its own configuration so
 // they never share a classpath (2.12 and 2.13 libraries cannot coexist). Tests load each one in an
 // isolated classloader.
-val Scalac212    = config("scalac212").hide
-val Scalac213    = config("scalac213").hide
-val Scalac3Lts   = config("scalac3lts").hide
-val Scalac3Next  = config("scalac3next").hide
+val Scalac212   = config("scalac212").hide
+val Scalac213   = config("scalac213").hide
+val Scalac3Lts  = config("scalac3lts").hide
+val Scalac3Next = config("scalac3next").hide
 // Test-only: real framework jars the framework-pack fixtures are built and run against.
-val GuiceJars    = config("guicejars").hide
-val JacksonJars  = config("jacksonjars").hide
-val GsonJars     = config("gsonjars").hide
-val JettyJars    = config("jettyjars").hide
-val PekkoJars    = config("pekkojars").hide
+val GuiceJars   = config("guicejars").hide
+val JacksonJars = config("jacksonjars").hide
+val GsonJars    = config("gsonjars").hide
+val JettyJars   = config("jettyjars").hide
+val PekkoJars   = config("pekkojars").hide
 
 lazy val core = project
   .in(file("core"))
@@ -38,25 +40,25 @@ lazy val core = project
     Test / scalacOptions := (Test / scalacOptions).value.filterNot(_.startsWith("-release")) :+ "-release:17",
     ivyConfigurations ++= Seq(Scalac212, Scalac213, Scalac3Lts, Scalac3Next, GuiceJars, JacksonJars, GsonJars, JettyJars, PekkoJars),
     libraryDependencies ++= Seq(
-      "org.ow2.asm" % "asm" % "9.8",
+      "org.ow2.asm"    % "asm"   % "9.11.1",
       "org.scalameta" %% "munit" % "1.2.3" % Test,
       // Test-only: the parity oracle. Never a runtime dependency.
-      "com.spotify" % "missinglink-core" % "0.2.11" % Test,
-      "org.scala-lang" % "scala-compiler"     % "2.12.21" % Scalac212,
-      "org.scala-lang" % "scala-compiler"     % "2.13.18" % Scalac213,
-      "org.scala-lang" % "scala3-compiler_3"  % "3.3.9"   % Scalac3Lts,
-      "org.scala-lang" % "scala3-compiler_3"  % "3.10.1"  % Scalac3Next,
-      "com.google.inject" % "guice" % "4.2.3" % GuiceJars,
-      "com.fasterxml.jackson.core" % "jackson-databind" % "2.14.0" % JacksonJars,
-      "com.google.code.gson" % "gson" % "2.10.1" % GsonJars,
+      "com.spotify"                % "missinglink-core"  % "0.2.11"  % Test,
+      "org.scala-lang"             % "scala-compiler"    % "2.12.21" % Scalac212,
+      "org.scala-lang"             % "scala-compiler"    % "2.13.18" % Scalac213,
+      "org.scala-lang"             % "scala3-compiler_3" % "3.3.9"   % Scalac3Lts,
+      "org.scala-lang"             % "scala3-compiler_3" % "3.10.1"  % Scalac3Next,
+      "com.google.inject"          % "guice"             % "4.2.3"   % GuiceJars,
+      "com.fasterxml.jackson.core" % "jackson-databind"  % "2.14.0"  % JacksonJars,
+      "com.google.code.gson"       % "gson"              % "2.10.1"  % GsonJars,
       // A real servlet container, to run servlets in.
-      "org.eclipse.jetty" % "jetty-servlet" % "9.2.21.v20170120" % JettyJars,
-      "org.apache.pekko" % "pekko-actor_2.13" % "1.6.0" % PekkoJars
+      "org.eclipse.jetty" % "jetty-servlet"    % "9.2.21.v20170120" % JettyJars,
+      "org.apache.pekko"  % "pekko-actor_2.13" % "1.6.0"            % PekkoJars
     ),
     Test / resourceGenerators += Def.task {
-      val conv  = fileConverter.value
-      val types = classpathTypes.value
-      val up    = update.value
+      val conv                           = fileConverter.value
+      val types                          = classpathTypes.value
+      val up                             = update.value
       def jars(c: Configuration): String =
         Classpaths.managedJars(c, types, up, conv).map(a => conv.toPath(a.data).toString).mkString(java.io.File.pathSeparator)
       val props = new java.util.Properties()
@@ -72,9 +74,10 @@ lazy val core = project
       val out = (Test / resourceManaged).value / "scala-compilers.properties"
       IO.createDirectory(out.getParentFile)
       val w = new java.io.FileWriter(out)
-      try props.store(w, "resolved Scala compiler classpaths for fixtures") finally w.close()
+      try props.store(w, "resolved Scala compiler classpaths for fixtures")
+      finally w.close()
       Seq(out)
     }.taskValue
   )
 
-lazy val root = rootProject.aggregate(core)
+lazy val root = rootProject.aggregate(core).settings(name := "reachable-linkage", publish / skip := true)
