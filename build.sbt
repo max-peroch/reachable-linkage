@@ -1,8 +1,8 @@
 ThisBuild / scalaVersion := "3.3.7"
 ThisBuild / organization := "io.github.max-peroch"
 ThisBuild / licenses     := List(License.Apache2)
-ThisBuild / homepage     := Some(url("https://github.com/max-peroch/reachable-linkage"))
-ThisBuild / developers   := List(Developer("max-peroch", "Maxime Perocheau", "max.peroch@hotmail.fr", url("https://perocheau.com")))
+ThisBuild / homepage     := Some(uri("https://github.com/max-peroch/reachable-linkage"))
+ThisBuild / developers   := List(Developer("max-peroch", "Maxime Perocheau", "max.peroch@hotmail.fr", uri("https://perocheau.com")))
 ThisBuild / description  := "A linkage checker for the JVM that reports only the breaks an application can actually hit"
 // Binary compatibility is promised from 1.0: until then a minor version may break it.
 ThisBuild / versionScheme     := Some("early-semver")
