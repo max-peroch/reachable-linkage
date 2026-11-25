@@ -49,7 +49,7 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
 ## Running things
 
 - `sbt core/test` is the suite (CI: JDK 17 to 27, and the checker on 8 to 16). Suites that use the oracle extend `OracleSuite` (first use builds a JDK model, about 12 s and 2 GB).
-- On demand, never in `sbt test`: `reachablelinkage.bench.Bench`, `Profile`, `LoopBench`, and in `linkage`: `Soundness`, `BlindSpots`. Real classpaths (Play, pekko-http, http4s, armeria, Spring Boot, sbt) are resolved
+- On demand, never in `sbt test`: `reachablelinkage.bench.Bench`, `Profile`, `LoopBench`, and in `linkage`: `Soundness`, `BlindSpots`. Real classpaths (Play, pekko-http, http4s, armeria, Spring Boot, sbt, sttp with tapir) are resolved
   offline into a scratch sbt project and passed as a file with one jar per line. `tools/coverage-agent` records the methods a run executes for `Soundness` (see its README).
 - `sbt core/publishLocal` publishes to `~/.ivy2/local`, where the plugin fetches it.
 - **Releases:** the version comes from the git tag (`sbt-ci-release`); there is no `version` setting. Pushing `vX.Y.Z` runs the CI `publish` job (`sbt ci-release`; secrets `PGP_SECRET`, `PGP_PASSPHRASE`,
