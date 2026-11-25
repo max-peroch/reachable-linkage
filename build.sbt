@@ -27,13 +27,14 @@ val SttpTapirJars    = config("sttptapirjars").hide
 val SttpTapirOldJars = config("sttptapiroldjars").hide
 
 // What the sttp and tapir control test needs: tapir with a circe JSON body and its sttp client, and the same set with circe 0.14.1 in place of circe.
-val sttpTapirDependencies: Seq[ModuleID] =
+val sttpTapirDependencies: Seq[ModuleID] = {
   val tapir  = Seq("tapir-core", "tapir-json-circe", "tapir-sttp-client4").map("com.softwaremill.sttp.tapir" %% _ % "1.14.1")
   val client = Seq("com.softwaremill.sttp.client4" %% "core" % "4.1.3")
   val circe  = Seq("io.circe" %% "circe-core" % "0.14.10", "io.circe" %% "circe-parser" % "0.14.10")
   val older  = Seq("circe-core", "circe-parser", "circe-jawn", "circe-numbers").map("io.circe" %% _ % "0.14.1")
   (tapir ++ client ++ circe).map(_ % SttpTapirJars) ++
     (tapir ++ client).map(_.excludeAll(ExclusionRule("io.circe")) % SttpTapirOldJars) ++ older.map(_ % SttpTapirOldJars)
+}
 
 lazy val core = project
   .in(file("core"))
@@ -50,7 +51,19 @@ lazy val core = project
     Compile / doc / javacOptions += "-Xdoclint:none",
     // The tests run on a newer JVM than the core promises (their compilers and child JVMs need 17), so they may use newer APIs.
     Test / scalacOptions := (Test / scalacOptions).value.filterNot(_.startsWith("-release")) :+ "-release:17",
-    ivyConfigurations ++= Seq(Scalac212, Scalac213, Scalac3Lts, Scalac3Next, GuiceJars, JacksonJars, GsonJars, JettyJars, PekkoJars, SttpTapirJars, SttpTapirOldJars),
+    ivyConfigurations ++= Seq(
+      Scalac212,
+      Scalac213,
+      Scalac3Lts,
+      Scalac3Next,
+      GuiceJars,
+      JacksonJars,
+      GsonJars,
+      JettyJars,
+      PekkoJars,
+      SttpTapirJars,
+      SttpTapirOldJars
+    ),
     libraryDependencies ++= Seq(
       "org.ow2.asm"    % "asm"   % "9.11.1",
       "org.scalameta" %% "munit" % "1.2.3" % Test,
