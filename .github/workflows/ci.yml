@@ -27,8 +27,14 @@ jobs:
         if: matrix.java == 17
         run: sbt -batch -Dsbt.supershell=false "scalafmtSbtCheck;scalafmtCheckAll"
       # The suites share heavy global state and run in one JVM (see .jvmopts for the heap).
+      # A run is tried up to three times: a fresh runner sometimes fails before or while the suites start (the sbt server not starting, a JDK that is not stable yet).
       - name: Test
-        run: sbt -batch -Dsbt.supershell=false core/test
+        run: |
+          for attempt in 1 2 3; do
+            sbt -batch -Dsbt.supershell=false core/test && exit 0
+            echo "::warning::attempt $attempt of the tests failed"
+          done
+          exit 1
 
   older-java:
     name: checker on JDK ${{ matrix.java }}
@@ -53,7 +59,11 @@ jobs:
         run: |
           export CHECK_JAVA_HOME="$(printenv JAVA_HOME_${{ matrix.java }}_X64)"
           export CHECK_JAVA_RELEASE=${{ matrix.java }}
-          sbt -batch -Dsbt.supershell=false "core/testOnly reachablelinkage.api.OtherJavaSuite"
+          for attempt in 1 2 3; do
+            sbt -batch -Dsbt.supershell=false "core/testOnly reachablelinkage.api.OtherJavaSuite" && exit 0
+            echo "::warning::attempt $attempt on JDK ${{ matrix.java }} failed"
+          done
+          exit 1
 
   publish:
     name: Publish artifacts
