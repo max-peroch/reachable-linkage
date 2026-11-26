@@ -25,6 +25,8 @@ val PekkoJars   = config("pekkojars").hide
 // sttp and tapir with a circe JSON body, and the same with an older circe.
 val SttpTapirJars    = config("sttptapirjars").hide
 val SttpTapirOldJars = config("sttptapiroldjars").hide
+// logback with the optional dependencies it leaves out (Janino, Jakarta Servlet and Mail).
+val LogbackJars = config("logbackjars").hide
 
 // What the sttp and tapir control test needs: tapir with a circe JSON body and its sttp client, and the same set with circe 0.14.1 in place of circe.
 val sttpTapirDependencies: Seq[ModuleID] = {
@@ -62,7 +64,8 @@ lazy val core = project
       JettyJars,
       PekkoJars,
       SttpTapirJars,
-      SttpTapirOldJars
+      SttpTapirOldJars,
+      LogbackJars
     ),
     libraryDependencies ++= Seq(
       "org.ow2.asm"    % "asm"   % "9.11.1",
@@ -79,7 +82,10 @@ lazy val core = project
       // A real servlet container, to run servlets in.
       "org.eclipse.jetty" % "jetty-servlet"    % "9.2.21.v20170120" % JettyJars,
       "org.apache.pekko"  % "pekko-actor_2.13" % "1.6.0"            % PekkoJars
-    ) ++ sttpTapirDependencies,
+    ) ++ sttpTapirDependencies ++ Seq(
+      "ch.qos.logback" % "logback-classic" % "1.5.18" % LogbackJars,
+      "org.slf4j"      % "slf4j-api"       % "2.0.17" % LogbackJars
+    ),
     Test / resourceGenerators += Def.task {
       val conv                           = fileConverter.value
       val types                          = classpathTypes.value
@@ -96,6 +102,7 @@ lazy val core = project
       props.setProperty("gson", jars(GsonJars))
       props.setProperty("jetty", jars(JettyJars))
       props.setProperty("pekko", jars(PekkoJars))
+      props.setProperty("logback", jars(LogbackJars))
       props.setProperty("sttp-tapir", jars(SttpTapirJars))
       props.setProperty("sttp-tapir-old-circe", jars(SttpTapirOldJars))
       val out = (Test / resourceManaged).value / "scala-compilers.properties"
