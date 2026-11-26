@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    name: sbt test (JDK ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The tests are compiled for 17, so the whole suite runs on 17 and later (the core itself runs on 8; see `older-java`).
+        java: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: ${{ matrix.java }}
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Check formatting
+        if: matrix.java == 17
+        run: sbt -batch -Dsbt.supershell=false "scalafmtSbtCheck;scalafmtCheckAll"
+      # The suites share heavy global state and run in one JVM (see .jvmopts for the heap).
+      # A run is tried up to three times: a fresh runner sometimes fails before or while the suites start (the sbt server not starting, a JDK that is not stable yet).
+      - name: Test
+        run: |
+          for attempt in 1 2 3; do
+            sbt -batch -Dsbt.supershell=false core/test && exit 0
+            echo "::warning::attempt $attempt of the tests failed"
+          done
+          exit 1
+      - name: Test the Scala 2.12 build
+        if: matrix.java == 17
+        run: sbt -batch -Dsbt.supershell=false "++2.12.21" core/test
+      # Before 1.0 a release may break compatibility, so this reports and does not fail the build.
+      - name: Report binary compatibility with the last release
+        if: matrix.java == 17
+        continue-on-error: true
+        run: sbt -batch -Dsbt.supershell=false core/mimaReportBinaryIssues
+
+  older-java:
+    name: checker on JDK ${{ matrix.java }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [8, 9, 11, 12, 13, 14, 15, 16]
+    steps:
+      - uses: actions/checkout@v6
+      # sbt and the tests run on 17 (the default, set last); the checker runs on the older Java in a child JVM.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: |
+            ${{ matrix.java }}
+            17
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Run the checker on JDK ${{ matrix.java }}
+        # setup-java exports the home of each version it installs as JAVA_HOME_<version>_X64.
+        run: |
+          export CHECK_JAVA_HOME="$(printenv JAVA_HOME_${{ matrix.java }}_X64)"
+          export CHECK_JAVA_RELEASE=${{ matrix.java }}
+          for attempt in 1 2 3; do
+            sbt -batch -Dsbt.supershell=false "core/testOnly reachablelinkage.api.OtherJavaSuite" && exit 0
+            echo "::warning::attempt $attempt on JDK ${{ matrix.java }} failed"
+          done
+          exit 1
+
+  publish:
+    name: Publish artifacts
+    needs: [test, older-java]
+    if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 17
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Publish
+        run: sbt -batch ci-release
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
