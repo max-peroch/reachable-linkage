@@ -30,11 +30,8 @@ import java.util.{Map => JMap}
   */
 object LinkageBridge {
 
-  private type Request  = JMap[String, AnyRef]
-  private type Response = JMap[String, AnyRef]
-
   /** Checks as `request` says and says what was found; never throws for a request that is merely wrong. */
-  def check(request: Request): Response =
+  def check(request: JMap[String, AnyRef]): JMap[String, AnyRef] =
     LinkageRequestDecoder.decode(request) match {
       case Left(problem)  => LinkageResponseEncoder.error(problem)
       case Right(decoded) => LinkageResponseEncoder.encode(Linkage.check(decoded))

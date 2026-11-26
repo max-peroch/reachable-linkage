@@ -13,7 +13,7 @@ package reachablelinkage.linkage
   *   - `Reflective`: reachable, but only because a reflection rule (a constant class or method name, a keep rule such as `@Inject`) or the class-load log made
   *     the code a root: no call path from the application's own code leads to it. It can fail for real, and rests on a rule or a log, not on a call the
   *     application makes.
-  *   - `Deserialized`: reachable only through `$deserializeLambda$`, the method the JDK calls to rebuild a serializable lambda from bytes, which names every
+  *   - `Deserialized`: reachable only through `\$deserializeLambda\$`, the method the JDK calls to rebuild a serializable lambda from bytes, which names every
   *     lambda body of its class. Real only for closures actually sent over the wire (Spark, remoting), so it is the weakest reachable label and the default
   *     `FailOn` does not fail on it.
   *

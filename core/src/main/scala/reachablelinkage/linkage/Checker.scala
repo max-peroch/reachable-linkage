@@ -17,7 +17,7 @@ object Checker {
   def check(index: ClassIndex, scope: Scope): Vector[Conflict] =
     findings(index, scope, Precision.Class).map(_.conflict).distinct
 
-  /** [[findings]] at one precision, the other options as they are by default. */
+  /** `findings` at one precision, the other options as they are by default. */
   def findings(index: ClassIndex, scope: Scope, precision: Precision): Vector[Finding] =
     findings(index, scope, CheckOptions(precision))
 

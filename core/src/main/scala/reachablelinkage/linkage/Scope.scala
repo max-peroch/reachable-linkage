@@ -2,7 +2,7 @@ package reachablelinkage.linkage
 
 import reachablelinkage.classpath.ClassIndex
 
-/** Which classpath entries (by index in the [[ClassIndex]]) take part in a check. Build one with [[Scope.apply]], which rejects indices that name no entry.
+/** Which classpath entries (by index in the `ClassIndex`) take part in a check. Build one with `Scope.apply`, which rejects indices that name no entry.
   *
   * @param roots
   *   entries whose classes start the class-level reachability walk

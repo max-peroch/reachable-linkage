@@ -27,7 +27,7 @@ object RuleNames {
     def apply(file: String): FileName = new FileName(file)
   }
 
-  /** A suffix added to a class name to name another (`_$logger`). */
+  /** A suffix added to a class name to name another (`_\$logger`). */
   final class NameSuffix(val value: String) extends AnyVal {
     override def toString: String = value
   }

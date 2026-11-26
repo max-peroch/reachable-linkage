@@ -7,7 +7,6 @@ import reachablelinkage.symbols.{ClassId, DescId, NameId, Symbols}
 
 /** A reference that will not link. `from` is the class holding the reference (Class precision). */
 sealed abstract class Conflict extends Product with Serializable {
-  import Conflict._
   def ordinal: Int
 
   /** The class that holds the offending reference. */

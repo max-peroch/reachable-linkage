@@ -56,7 +56,7 @@ lazy val core = project
     // and -release:8 makes the compilers reject any API newer than Java 8. The facade enums are Java sources
     // (a Scala 3.3 enum that extends java.lang.Enum hands Java callers null if Scala code touches it first).
     scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, _)) => Seq("-Ywarn-unused")
+      case Some((2, _)) => Seq("-Ywarn-unused:imports,privates,locals,patvars,implicits")
       case _            => Seq("-Wunused:all")
     }),
     Compile / scalacOptions += "-release:8",

@@ -31,7 +31,7 @@ trait ClassSource extends AutoCloseable {
     */
   private[reachablelinkage] def summarized(internalName: String, syms: Symbols): ClassInfo = null
 
-  /** A hex fingerprint of this entry's classes (see [[JarSummary.fingerprint]]), which changes exactly when the classes do, or none for a class directory: that
+  /** A hex fingerprint of this entry's classes (see `JarSummary.fingerprint`), which changes exactly when the classes do, or none for a class directory: that
     * is what is being edited, so it is never treated as a dependency that changed.
     */
   def fingerprint: Option[String] = None

@@ -62,7 +62,7 @@ final class ClassIndex(val sources: IndexedSeq[ClassSource], val syms: Symbols) 
     out
   }
 
-  /** The classes nested directly in `outer` by name (`Outer$Inner`): member classes, and anonymous and local ones too. Built once, on first use. */
+  /** The classes nested directly in `outer` by name (`Outer\$Inner`): member classes, and anonymous and local ones too. Built once, on first use. */
   def nestedIn(outer: ClassId): Vector[ClassId] =
     nestedByOuter.getOrDefault(syms.className(outer), Vector.empty)
 

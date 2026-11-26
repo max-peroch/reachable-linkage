@@ -32,7 +32,7 @@ private[classpath] object JdkListing {
       .flatMap(f => key.flatMap(readCached(f, _)))
       .getOrElse {
         val listing = list()
-        for { f <- file; k <- key if listing.unreadable.isEmpty } writeCached(f, k, listing)
+        if (listing.unreadable.isEmpty) for { f <- file; k <- key } writeCached(f, k, listing)
         listing
       }
   }

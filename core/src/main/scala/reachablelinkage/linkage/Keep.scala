@@ -24,7 +24,7 @@ object Keep {
 
   final case class Constructors(annotations: Set[ClassName]) extends Keep { def ordinal: Int = 1 }
 
-  /** A class reached, with a class on the classpath named after it plus one of these suffixes (`Foo` and `Foo_$logger`), makes that class a root built through
+  /** A class reached, with a class on the classpath named after it plus one of these suffixes (`Foo` and `Foo_\$logger`), makes that class a root built through
     * its constructors: a framework that is handed `Foo` loads its generated companion by name (jboss-logging, annotation processors).
     */
 
@@ -176,7 +176,7 @@ object Keep {
   val Akka: List[Keep]  = List(props("akka"))
   val Pekko: List[Keep] = List(props("org/apache/pekko"))
 
-  /** jboss-logging: `Logger.getMessageLogger(Foo.class)` loads the generated `Foo_$logger`, and `getMessageBundle` the `Foo_$bundle`. */
+  /** jboss-logging: `Logger.getMessageLogger(Foo.class)` loads the generated `Foo_\$logger`, and `getMessageBundle` the `Foo_\$bundle`. */
   val JBossLogging: List[Keep] = List(GeneratedClasses(suffixes("_$logger", "_$bundle")))
 
   private def spring(names: String*): Set[ClassName] = classNames(names.map("org/springframework/" + _): _*)

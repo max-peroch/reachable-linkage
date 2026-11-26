@@ -100,20 +100,6 @@ object Bench:
     val byLabel = result.conflicts.asScala.groupBy(_.label).view.mapValues(_.size).toMap
     println(s"ours precision=$precision scope=$scope conflicts=${rows.size} byLabel=$byLabel warnings=${result.warnings.size} checkMs=$ms")
 
-  private def request(classpath: Seq[Path], app: Path, precision: String): LinkageRequest =
-    LinkageRequest(
-      java.util.List.of(app),
-      classpath.map(j => ClasspathEntry(j.getFileName.toString, j)).asJava,
-      CheckScope.App,
-      java.util.Set.of(),
-      java.util.List.of(),
-      precision match
-        case "method" => CheckPrecision.METHOD
-        case "rta"    => CheckPrecision.METHOD_RTA
-        case _        => CheckPrecision.CLASS,
-      java.util.Optional.ofNullable(System.getProperty("bench.cache")).map(p => Paths.get(p))
-    )
-
   private def ml(classpath: Seq[Path], app: Path, scan: Boolean, out: Path): Unit =
     val t0                = System.nanoTime
     val appSrc            = ClassSource.open(app).toOption.get

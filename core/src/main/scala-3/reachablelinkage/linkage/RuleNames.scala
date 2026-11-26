@@ -26,7 +26,7 @@ object RuleNames {
     extension (name: FileName) def value: String = name
   }
 
-  /** A suffix added to a class name to name another (`_$logger`). */
+  /** A suffix added to a class name to name another (`_\$logger`). */
   opaque type NameSuffix = String
   object NameSuffix {
     def apply(suffix: String): NameSuffix          = suffix

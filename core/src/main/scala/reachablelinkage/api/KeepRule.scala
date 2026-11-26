@@ -24,7 +24,7 @@ import reachablelinkage.linkage.Keep
   * keep-constructed-arguments org.apache.pekko.actor.Props.create
   * keep-constructors       org.springframework.stereotype.Component
   * requires-classes        org.springframework.boot.autoconfigure.condition.ConditionalOnClass
-  * keep-generated-classes  _$logger _$bundle
+  * keep-generated-classes  _\$logger _\$bundle
   * }}}
   */
 final case class KeepRule private (kind: KeepRuleKind, names: java.util.List[String])

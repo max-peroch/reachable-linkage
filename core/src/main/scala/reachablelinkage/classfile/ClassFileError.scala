@@ -1,6 +1,6 @@
 package reachablelinkage.classfile
 
-/** Why a class could not be turned into a [[ClassInfo]]. */
+/** Why a class could not be turned into a `ClassInfo`. */
 sealed abstract class ClassFileError extends Product with Serializable {
   import ClassFileError._
   def ordinal: Int

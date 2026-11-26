@@ -4,7 +4,6 @@ import reachablelinkage.symbols.Collections._
 import scala.collection.mutable.ArrayBuffer
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
-import scala.util.chaining._
 import scala.util.control.NonFatal
 
 import reachablelinkage.classpath.{ClassIndex, ClassSource}
