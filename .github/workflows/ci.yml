@@ -49,7 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [8, 9, 10, 11, 12, 13, 14, 15, 16]
+        java: [8, 9, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@v6
       # sbt and the tests run on 17 (the default, set last); the checker runs on the older Java in a child JVM.

@@ -10,7 +10,7 @@ The code is in `core/`; the sbt plugin lives in its own repository (see "The sbt
 - **Language:** idiomatic Scala 3: opaque types for ids, enums/sealed ADTs, `Either` for errors.
 - **Dependencies:** ASM is the only runtime dependency. missinglink-core is test-only (the parity oracle). Typelevel is fine in test and build.
 - **JVM floor:** the core runs on **Java 8 and later** (Scala 3.3 LTS, `-release:8`, `javac --release 8`); tests are compiled for 17. The facade enums are **Java sources**, because a Scala 3.3 enum extending
-  `java.lang.Enum` hands a Java caller `null`. `OtherJavaSuite` runs the checker in a child JVM of the Java at `CHECK_JAVA_HOME` (skipped without it; CI sets it for 8 to 16).
+  `java.lang.Enum` hands a Java caller `null`. `OtherJavaSuite` runs the checker in a child JVM of the Java at `CHECK_JAVA_HOME` (skipped without it; CI sets it for 8 to 16 except 10).
 - **Precision and labels:** `Method` (CHA call graph) is the default, `Class` the compatibility view, `MethodRta` opt-in (it can silently miss an instance made by a route it cannot see). `Method` labels exactly
   the conflicts `Class` reports.
 - **No command-line entry point.** A caller uses `Linkage.check` or the bridge.
@@ -48,7 +48,7 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
 
 ## Running things
 
-- `sbt core/test` is the suite (CI: JDK 17 to 27, and the checker on 8 to 16). Suites that use the oracle extend `OracleSuite` (first use builds a JDK model, about 12 s and 2 GB).
+- `sbt core/test` is the suite (CI: JDK 17 to 27, and the checker on 8 to 16 except 10). Suites that use the oracle extend `OracleSuite` (first use builds a JDK model, about 12 s and 2 GB).
 - On demand, never in `sbt test`: `reachablelinkage.bench.Bench`, `Profile`, `LoopBench`, and in `linkage`: `Soundness`, `BlindSpots`. Real classpaths (Play, pekko-http, http4s, armeria, Spring Boot, sbt, sttp with tapir) are resolved
   offline into a scratch sbt project and passed as a file with one jar per line. `tools/coverage-agent` records the methods a run executes for `Soundness` (see its README).
 - `sbt core/publishLocal` publishes to `~/.ivy2/local`, where the plugin fetches it.
