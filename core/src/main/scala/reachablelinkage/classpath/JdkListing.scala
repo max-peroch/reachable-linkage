@@ -51,6 +51,23 @@ private[classpath] object JdkListing:
     val digest = MessageDigest.getInstance("SHA-256").digest(key.getBytes("UTF-8"))
     "jdk-" + digest.take(8).map(b => f"${b & 0xff}%02x").mkString + ".listing"
 
+  /** How many more times a module's listing is tried after a `ConcurrentModificationException`. */
+  private val ListingRetries = 2
+
+  /** Every resource of a module, or None if the module cannot be read. JDK 9 and 10 can fail the first walk of a module image with a
+    * `ConcurrentModificationException` while they build the image's directory tree from inside the walk; the next walk finds it built.
+    */
+  private def classResources(ref: java.lang.module.ModuleReference, retries: Int): Option[Vector[String]] =
+    try Some(resourcesOf(ref))
+    catch
+      case _: java.util.ConcurrentModificationException if retries > 0           => classResources(ref, retries - 1)
+      case _: java.io.IOException | _: java.util.ConcurrentModificationException => None
+
+  private def resourcesOf(ref: java.lang.module.ModuleReference): Vector[String] =
+    val reader = ref.open()
+    try reader.list().iterator().asScala.toVector
+    finally reader.close()
+
   /** Lists every class of every system module, in module-name order, through the module system; a module that cannot be read is left out and named in
     * `unreadable`.
     */
@@ -62,21 +79,15 @@ private[classpath] object JdkListing:
     val seen       = new java.util.HashSet[String]()
     val unreadable = List.newBuilder[String]
     refs.zipWithIndex.foreach: (ref, m) =>
-      try
-        val reader = ref.open()
-        try
-          reader
-            .list()
-            .iterator()
-            .asScala
-            .foreach: resource =>
-              if resource.endsWith(".class") && resource != "module-info.class" then
-                val name = resource.dropRight(6)
-                if seen.add(name) then
-                  names += name
-                  owner += m
-        finally reader.close()
-      catch case _: java.io.IOException => unreadable += modules(m)
+      classResources(ref, ListingRetries) match
+        case None            => unreadable += modules(m)
+        case Some(resources) =>
+          resources.foreach: resource =>
+            if resource.endsWith(".class") && resource != "module-info.class" then
+              val name = resource.dropRight(6)
+              if seen.add(name) then
+                names += name
+                owner += m
     JdkListing(modules, names.result(), owner.result(), unreadable.result())
 
   /** The listing in `file` if it is valid and was made for `key`; None for anything else. */
