@@ -53,7 +53,7 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
 - `sbt core/test` is the suite (CI: JDK 17 to 27, and the checker on 8 to 16 except 10). `sbt ++2.12.21 core/test` runs the Scala 2.12 build's own small suite (`src/test/scala-2.12`); the Scala 3 suites do not run on 2.12. Suites that use the oracle extend `OracleSuite` (first use builds a JDK model, about 12 s and 2 GB).
 - On demand, never in `sbt test`: `reachablelinkage.bench.Bench`, `Profile`, `LoopBench`, and in `linkage`: `Soundness`, `BlindSpots`. Real classpaths (Play, pekko-http, http4s, armeria, Spring Boot, sbt, sttp with tapir) are resolved
   offline into a scratch sbt project and passed as a file with one jar per line. `tools/coverage-agent` records the methods a run executes for `Soundness` (see its README).
-- `sbt core/publishLocal` publishes to `~/.ivy2/local`, where the plugin fetches it.
+- `sbt +core/publishLocal` publishes both Scala versions to `~/.ivy2/local`, where a plugin run against an unreleased core finds them.
 - **Releases:** the version comes from the git tag (`sbt-ci-release`); there is no `version` setting. Pushing `vX.Y.Z` runs the CI `publish` job (`sbt ci-release`; secrets `PGP_SECRET`, `PGP_PASSPHRASE`,
   `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`). Both Scala versions are published (`_3` and `_2.12`). Without a tag, `publishLocal` makes `0.0.0+N-<sha>-SNAPSHOT`. MiMa (`core/mimaReportBinaryIssues`) compares with the last tagged release; before 1.0 CI reports it and does not fail.
 
@@ -61,8 +61,7 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
 
 The plugin is a patched sbt-missinglink in its own repository (branch `reachable-linkage-engine`), for **sbt 1 (Scala 2.12) and sbt 2 (Scala 3)**; keep its LICENSE/NOTICE.
 
-- **Engine in its own classloader:** fetched with the Coursier API (sbt's resolution would force the project's Scala library onto it), loaded in a `URLClassLoader` whose parent is the platform loader, and called by
-  reflection on `LinkageBridge.check(Map): Map`. The engine version is a constant in `EngineBridge`.
+- **Engine as a dependency:** `reachable-linkage-core_2.12` on sbt 1 and `_3` on sbt 2, called directly through `LinkageBridge.check(Map): Map`; the version is in the plugin's `build.sbt`.
 - **Settings:** sbt-missinglink's names and defaults, plus `missinglinkPrecision`, `missinglinkKeepRulesFile`, `missinglinkCacheDirectory`. `missinglinkScanDependencies` is the one switch for scope: false (default) starts
   from the project's classes and fails on conflicts they reach; true starts from every class, fails on every conflict, and implies `Class` precision unless `missinglinkPrecision` is set. `Class` precision is the old
   sbt-missinglink behaviour and shows only the three kinds it reports. There is no class-load-log setting.
