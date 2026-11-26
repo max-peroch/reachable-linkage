@@ -25,10 +25,10 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: Check formatting
         if: matrix.java == 17
-        run: sbt -Dsbt.supershell=false "scalafmtSbtCheck;scalafmtCheckAll"
+        run: sbt -batch -Dsbt.supershell=false "scalafmtSbtCheck;scalafmtCheckAll"
       # The suites share heavy global state and run in one JVM (see .jvmopts for the heap).
       - name: Test
-        run: sbt -Dsbt.supershell=false core/test
+        run: sbt -batch -Dsbt.supershell=false core/test
 
   older-java:
     name: checker on JDK ${{ matrix.java }}
@@ -53,7 +53,7 @@ jobs:
         run: |
           export CHECK_JAVA_HOME="$(printenv JAVA_HOME_${{ matrix.java }}_X64)"
           export CHECK_JAVA_RELEASE=${{ matrix.java }}
-          sbt -Dsbt.supershell=false "core/testOnly reachablelinkage.api.OtherJavaSuite"
+          sbt -batch -Dsbt.supershell=false "core/testOnly reachablelinkage.api.OtherJavaSuite"
 
   publish:
     name: Publish artifacts
@@ -71,7 +71,7 @@ jobs:
           cache: sbt
       - uses: sbt/setup-sbt@v1
       - name: Publish
-        run: sbt ci-release
+        run: sbt -batch ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
