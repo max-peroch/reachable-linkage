@@ -22,6 +22,21 @@ val JacksonJars = config("jacksonjars").hide
 val GsonJars    = config("gsonjars").hide
 val JettyJars   = config("jettyjars").hide
 val PekkoJars   = config("pekkojars").hide
+// sttp and tapir with a circe JSON body, and the same with an older circe.
+val SttpTapirJars    = config("sttptapirjars").hide
+val SttpTapirOldJars = config("sttptapiroldjars").hide
+// logback with the optional dependencies it leaves out (Janino, Jakarta Servlet and Mail).
+val LogbackJars = config("logbackjars").hide
+
+// What the sttp and tapir control test needs: tapir with a circe JSON body and its sttp client, and the same set with circe 0.14.1 in place of circe.
+val sttpTapirDependencies: Seq[ModuleID] = {
+  val tapir  = Seq("tapir-core", "tapir-json-circe", "tapir-sttp-client4").map("com.softwaremill.sttp.tapir" %% _ % "1.14.1")
+  val client = Seq("com.softwaremill.sttp.client4" %% "core" % "4.1.3")
+  val circe  = Seq("io.circe" %% "circe-core" % "0.14.10", "io.circe" %% "circe-parser" % "0.14.10")
+  val older  = Seq("circe-core", "circe-parser", "circe-jawn", "circe-numbers").map("io.circe" %% _ % "0.14.1")
+  (tapir ++ client ++ circe).map(_ % SttpTapirJars) ++
+    (tapir ++ client).map(_.excludeAll(ExclusionRule("io.circe")) % SttpTapirOldJars) ++ older.map(_ % SttpTapirOldJars)
+}
 
 // The published module is checked, in binary compatibility, against the version released before the one being built (`mimaReportBinaryIssues`).
 // Without a tag for an earlier release there is nothing to compare with.
@@ -70,7 +85,10 @@ lazy val core = project
       JacksonJars,
       GsonJars,
       JettyJars,
-      PekkoJars
+      PekkoJars,
+      SttpTapirJars,
+      SttpTapirOldJars,
+      LogbackJars
     ),
     libraryDependencies ++= Seq(
       "org.ow2.asm"    % "asm"   % "9.11.1",
@@ -87,6 +105,9 @@ lazy val core = project
       // A real servlet container, to run servlets in.
       "org.eclipse.jetty" % "jetty-servlet"    % "9.2.21.v20170120" % JettyJars,
       "org.apache.pekko"  % "pekko-actor_2.13" % "1.6.0"            % PekkoJars
+    ) ++ sttpTapirDependencies ++ Seq(
+      "ch.qos.logback" % "logback-classic" % "1.5.18" % LogbackJars,
+      "org.slf4j"      % "slf4j-api"       % "2.0.17" % LogbackJars
     ),
     Test / resourceGenerators += Def.task {
       val conv                           = fileConverter.value
@@ -104,6 +125,9 @@ lazy val core = project
       props.setProperty("gson", jars(GsonJars))
       props.setProperty("jetty", jars(JettyJars))
       props.setProperty("pekko", jars(PekkoJars))
+      props.setProperty("logback", jars(LogbackJars))
+      props.setProperty("sttp-tapir", jars(SttpTapirJars))
+      props.setProperty("sttp-tapir-old-circe", jars(SttpTapirOldJars))
       val out = (Test / resourceManaged).value / "scala-compilers.properties"
       IO.createDirectory(out.getParentFile)
       val w = new java.io.FileWriter(out)
