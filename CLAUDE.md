@@ -53,7 +53,7 @@ Concept-named packages under `reachablelinkage`, never `core`/`util`/`common`; o
   offline into a scratch sbt project and passed as a file with one jar per line. `tools/coverage-agent` records the methods a run executes for `Soundness` (see its README).
 - `sbt core/publishLocal` publishes to `~/.ivy2/local`, where the plugin fetches it.
 - **Releases:** the version comes from the git tag (`sbt-ci-release`); there is no `version` setting. Pushing `vX.Y.Z` runs the CI `publish` job (`sbt ci-release`; secrets `PGP_SECRET`, `PGP_PASSPHRASE`,
-  `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`). Without a tag, `publishLocal` makes `0.0.0+N-<sha>-SNAPSHOT`.
+  `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`). Without a tag, `publishLocal` makes `0.0.0+N-<sha>-SNAPSHOT`. MiMa (`core/mimaReportBinaryIssues`) compares with the last tagged release; before 1.0 CI reports it and does not fail.
 
 ## The sbt plugin
 

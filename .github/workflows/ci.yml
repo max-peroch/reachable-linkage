@@ -16,10 +16,12 @@ jobs:
         # The tests are compiled for 17, so the whole suite runs on 17 and later (the core itself runs on 8; see `older-java`).
         java: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
         with:
-          distribution: temurin
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: zulu
           java-version: ${{ matrix.java }}
           cache: sbt
       - uses: sbt/setup-sbt@v1
@@ -35,6 +37,11 @@ jobs:
             echo "::warning::attempt $attempt of the tests failed"
           done
           exit 1
+      # Before 1.0 a release may break compatibility, so this reports and does not fail the build.
+      - name: Report binary compatibility with the last release
+        if: matrix.java == 17
+        continue-on-error: true
+        run: sbt -batch -Dsbt.supershell=false core/mimaReportBinaryIssues
 
   older-java:
     name: checker on JDK ${{ matrix.java }}
@@ -44,9 +51,9 @@ jobs:
       matrix:
         java: [8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # sbt and the tests run on 17 (the default, set last); the checker runs on the older Java in a child JVM.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: |
@@ -71,12 +78,12 @@ jobs:
     if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
-          distribution: temurin
+          distribution: zulu
           java-version: 17
           cache: sbt
       - uses: sbt/setup-sbt@v1

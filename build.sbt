@@ -38,10 +38,17 @@ val sttpTapirDependencies: Seq[ModuleID] = {
     (tapir ++ client).map(_.excludeAll(ExclusionRule("io.circe")) % SttpTapirOldJars) ++ older.map(_ % SttpTapirOldJars)
 }
 
+// The published module is checked, in binary compatibility, against the version released before the one being built (`mimaReportBinaryIssues`).
+// Without a tag for an earlier release there is nothing to compare with.
+lazy val againstLastRelease = Seq(
+  mimaPreviousArtifacts := previousStableVersion.value.map(version => organization.value %% moduleName.value % version).toSet
+)
+
 lazy val core = project
   .in(file("core"))
   .settings(
     name := "reachable-linkage-core",
+    againstLastRelease,
     // The suites share heavy global state (missinglink's full-JDK model, the Scala compilers), and run
     // in one JVM: sequential keeps every test inside its time limit.
     Test / parallelExecution := false,
