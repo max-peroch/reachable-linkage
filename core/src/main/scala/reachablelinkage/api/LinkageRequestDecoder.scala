@@ -23,6 +23,7 @@ private[api] object LinkageRequestDecoder {
       conflictFilter <- conflictFilter(request)
       keepRules      <- keepRules(request)
       loadedClasses  <- loadedClasses(request)
+      routes         <- optionalBoolean(request, "routes")
     } yield {
       val base = LinkageRequest
         .builder()
@@ -33,7 +34,7 @@ private[api] object LinkageRequestDecoder {
         .withExcludedEntries(excluded.toSet.asJava)
         .withBootClasspath(bootClasspath.asJava)
         .withConflictFilter(conflictFilter)
-      withOptionals(base, cacheDirectory, javaRelease, keepRules, loadedClasses).build()
+      withOptionals(base, cacheDirectory, javaRelease, keepRules, loadedClasses).withRoutes(routes.contains(true)).build()
     }
 
   /** The settings a request may leave out are added only when it gives them. */
@@ -70,6 +71,13 @@ private[api] object LinkageRequestDecoder {
       case None            => Right(None)
       case Some(s: String) => Right(Some(s))
       case Some(_)         => Left(s"'$key' must be a string")
+    }
+
+  private def optionalBoolean(request: JMap[String, AnyRef], key: String): Either[String, Option[Boolean]] =
+    value(request, key) match {
+      case None                       => Right(None)
+      case Some(b: java.lang.Boolean) => Right(Some(b.booleanValue))
+      case Some(_)                    => Left(s"'$key' must be true or false")
     }
 
   private def optionalInt(request: JMap[String, AnyRef], key: String): Either[String, Option[Int]] =

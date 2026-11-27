@@ -9,5 +9,9 @@ final case class LinkageConflict(
     usedBy: String,
     existsIn: String,
     reason: String,
-    label: ConflictLabel
+    label: ConflictLabel,
+    /** The methods that lead from the application to the one holding the reference, as `pkg.Class.method`, first to last; empty unless the request asked for
+      * routes and the conflict fails.
+      */
+    route: java.util.List[String] = java.util.Collections.emptyList[String]()
 )

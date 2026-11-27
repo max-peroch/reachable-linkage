@@ -49,6 +49,7 @@ private[api] object LinkageResponseEncoder {
     map.put("targetClass", c.dependency.targetClass)
     map.put("targetMemberName", c.dependency.targetMemberName)
     map.put("targetMemberDescriptor", c.dependency.targetMemberDescriptor)
+    map.put("route", new ArrayList[String](c.route))
     map.put("failing", Boolean.box(ConflictLabel.counts(c.label)))
     map.put("reportedByMissinglink", Boolean.box(c.category.reportedByMissinglink))
     map

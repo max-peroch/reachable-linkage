@@ -29,7 +29,9 @@ private[linkage] final class MethodGraph private (
     entryGuards: Array[Int],
     traverse: BitSet,
     provenance: Provenance,
-    reflectedNames: BitSet
+    reflectedNames: BitSet,
+    routeParents: Array[Int],
+    nodeRanges: MethodGraph.NodeRanges
 ) {
 
   def classReached(c: ClassId): Boolean = c.value >= 0 && reachedClasses.get(c.value)
@@ -104,6 +106,34 @@ private[linkage] final class MethodGraph private (
         }
     }
 
+  private def stepOfNode(index: ClassIndex, node: Int): Option[RouteStep] = {
+    val found = java.util.Arrays.binarySearch(nodeRanges.starts, node)
+    val at    = if (found >= 0) found else -found - 2
+    if (at < 0) None
+    else {
+      val c      = ClassId(nodeRanges.classes(at))
+      val method = node - nodeRanges.starts(at)
+      if (method < index.get(c).methods.length) Some(RouteStep(c, method)) else None
+    }
+  }
+
+  /** The nodes from a root to `node`, following the route parents; the root's parent and a node no root reaches both end it. */
+  @tailrec private def nodesTo(node: Int, acc: List[Int]): List[Int] = if (node < 0) acc else nodesTo(routeParents(node), node :: acc)
+
+  /** The methods that lead from the application to the one holding the finding's reference, first to last, along a shortest path of the call graph. Empty if
+    * the graph was built without routes, or the reference is not in a method the walk reached.
+    */
+  def route(index: ClassIndex, f: Finding): Vector[RouteStep] = {
+    val holder = holderOf(index, f)
+    val base   = nodeBase.get(f.conflict.inClass.value)
+    if (routeParents.isEmpty || holder < 0 || base == null) Vector.empty
+    else {
+      val node = base.intValue + holder
+      if (node >= routeParents.length || routeParents(node) == MethodGraph.Unreached) Vector.empty
+      else nodesTo(node, Nil).flatMap(stepOfNode(index, _)).toVector
+    }
+  }
+
   /** How the finding's holder (its method, or its class when it is not an instruction) is reached. */
   def reach(index: ClassIndex, f: Finding): Reach =
     f.conflict match {
@@ -138,6 +168,17 @@ private[linkage] object MethodGraph {
   /** An entry guard no edge has narrowed: the node was not reached from a root. */
   private val NotSolved: Int = -1
 
+  /** In the route parents: the parent of a root. */
+  private val Root: Int = -1
+
+  /** In the route parents: the parent of a node no root reaches. */
+  private val Unreached: Int = -2
+
+  /** Where each class's methods start in the node numbering (`starts`, ascending) and which class each start belongs to (`classes`, by id). */
+  final class NodeRanges(val starts: Array[Int], val classes: Array[Int])
+
+  private val NoRanges: NodeRanges = new NodeRanges(new Array[Int](0), new Array[Int](0))
+
   /** The mask of an edge whose target inherits nothing from its caller (a method handle). */
   private val Unguarded: Int = Int.MinValue
 
@@ -155,7 +196,17 @@ private[linkage] object MethodGraph {
       loaded: Iterable[ClassId],
       traverse: BitSet
   ): MethodGraph =
-    build(index, resolver, rules, dispatch, appClasses, loaded, traverse, new FrameworkTargets(index, rules, Generated.of(index, rules), traverse))
+    build(
+      index,
+      resolver,
+      rules,
+      dispatch,
+      appClasses,
+      loaded,
+      traverse,
+      new FrameworkTargets(index, rules, Generated.of(index, rules), traverse),
+      routes = Routes.Skipped
+    )
 
   /** As above, with the framework targets already prepared (the class walk asks the same questions). */
   def build(
@@ -166,11 +217,24 @@ private[linkage] object MethodGraph {
       appClasses: Iterable[ClassId],
       loaded: Iterable[ClassId],
       traverse: BitSet,
-      targets: FrameworkTargets
+      targets: FrameworkTargets,
+      routes: Routes
   ): MethodGraph = {
     val b = new Builder(index, resolver, traverse, rules, dispatch, targets)
     b.run(appClasses, loaded)
-    new MethodGraph(b.reachedClasses, b.reachedMethods, b.virtualCalls, b.ancestorCache, b.nodeBase, b.solveGuards(), traverse, b.provenance, b.reflectedNames)
+    new MethodGraph(
+      b.reachedClasses,
+      b.reachedMethods,
+      b.virtualCalls,
+      b.ancestorCache,
+      b.nodeBase,
+      b.solveGuards(),
+      traverse,
+      b.provenance,
+      b.reflectedNames,
+      if (routes == Routes.Wanted) b.routeParents() else new Array[Int](0),
+      if (routes == Routes.Wanted) b.nodeRanges() else NoRanges
+    )
   }
 
   private final class Builder(index: ClassIndex, resolver: Resolver, traverse: BitSet, rules: KeepRules, dispatch: Dispatch, targets: FrameworkTargets) {
@@ -841,9 +905,9 @@ private[linkage] object MethodGraph {
     /** For every node, the guard bits that all calls reaching it carry: the greatest solution of `entry(v) = AND over edges (u, v, mask) of (mask | entry(u))`,
       * with roots fixed at 0 and a method handle's edge contributing 0. Narrowing only, so a worklist reaches it.
       */
-    def solveGuards(): Array[Int] = {
+    /** The edges grouped by the node they leave: `order` lists edge ids, and those leaving node `u` are `start(u)` until `start(u + 1)`. */
+    private def adjacency(): (Array[Int], Array[Int]) = {
       val n                            = nextNode
-      val entry                        = Array.fill(n)(NotSolved)
       val edges                        = edgeFrom.size
       val start                        = new Array[Int](n + 1)
       @tailrec def count(e: Int): Unit =
@@ -862,6 +926,55 @@ private[linkage] object MethodGraph {
           place(e + 1)
         }
       place(0)
+      (start, order)
+    }
+
+    /** Where each class's methods start in the node numbering, for the classes that have methods. */
+    def nodeRanges(): NodeRanges = {
+      val withMethods = (0 until nodeBase.size)
+        .flatMap(i => Option(nodeBase.get(i)).map(b => (b.intValue, i)))
+        .filter { case (_, i) =>
+          val info = index.get(ClassId(i))
+          info != null && info.methods.length > 0
+        }
+        .sortBy(_._1)
+      new NodeRanges(withMethods.map(_._1).toArray, withMethods.map(_._2).toArray)
+    }
+
+    /** For every node, the node that first reached it on a shortest path from a root: -1 for a root, -2 for a node no root reaches. */
+    def routeParents(): Array[Int] = {
+      val n                                     = nextNode
+      val (start, order)                        = adjacency()
+      val parent                                = Array.fill(n)(Unreached)
+      val queue                                 = new Array[Int](n)
+      @tailrec def seed(r: Int, tail: Int): Int =
+        if (r >= 0 && r < n) {
+          parent(r) = Root
+          queue(tail) = r
+          seed(roots.nextSetBit(r + 1), tail + 1)
+        } else tail
+      @tailrec def visit(head: Int, tail: Int): Unit =
+        if (head < tail) {
+          val u                                     = queue(head)
+          @tailrec def leaving(k: Int, t: Int): Int =
+            if (k < start(u + 1)) {
+              val v = edgeTo(order(k))
+              if (parent(v) == Unreached) {
+                parent(v) = u
+                queue(t) = v
+                leaving(k + 1, t + 1)
+              } else leaving(k + 1, t)
+            } else t
+          visit(head + 1, leaving(start(u), tail))
+        }
+      visit(0, seed(roots.nextSetBit(0), 0))
+      parent
+    }
+
+    def solveGuards(): Array[Int] = {
+      val n              = nextNode
+      val entry          = Array.fill(n)(NotSolved)
+      val (start, order) = adjacency()
 
       val queue                       = new IntList
       val queued                      = new BitSet

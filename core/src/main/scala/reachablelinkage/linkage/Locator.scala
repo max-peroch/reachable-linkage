@@ -18,6 +18,13 @@ final class Locator(index: ClassIndex) {
       info
     }
 
+  /** The name of method number `method` of class `c`. */
+  def methodNameOf(c: ClassId, method: Int): String =
+    index.get(c) match {
+      case null => "?"
+      case info => index.syms.name(info.methods(method).name)
+    }
+
   def locate(f: Finding): Location =
     if (f.kind == RefKind.Hierarchy || f.kind == RefKind.Service) Location.Unknown
     else

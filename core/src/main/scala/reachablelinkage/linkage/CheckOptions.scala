@@ -15,5 +15,6 @@ final case class CheckOptions(
     precision: Precision = Precision.Method,
     keep: Seq[Keep] = Keep.standard,
     loaded: Set[String] = Set.empty,
-    exportedPackages: Set[String] = Set.empty
+    exportedPackages: Set[String] = Set.empty,
+    routes: Routes = Routes.Skipped
 )

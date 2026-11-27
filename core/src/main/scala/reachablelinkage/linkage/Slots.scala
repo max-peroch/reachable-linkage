@@ -7,6 +7,8 @@ import scala.collection.mutable.ArrayBuffer
 private[linkage] final class Slots[A >: Null <: AnyRef] {
   private val buf = ArrayBuffer.empty[A]
 
+  def size: Int = buf.length
+
   def get(i: Int): A = if (i >= 0 && i < buf.length) buf(i) else null
 
   def put(i: Int, a: A): Unit = {

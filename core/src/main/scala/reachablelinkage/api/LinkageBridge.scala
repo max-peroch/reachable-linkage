@@ -15,6 +15,7 @@ import java.util.{Map => JMap}
   *   - `bootClasspath`: a list of paths, for checking against another JDK's `rt.jar`
   *   - `cacheDirectory`: a path
   *   - `javaRelease`: an integer
+  *   - `routes`: true to have each conflict that fails say how the application reaches it (the response's `route`)
   *   - `keepRulesFile`: a path to a rules file (see [[KeepRule]]); its rules are added to the built-in packs
   *   - `classLoadLog`: a path to a class-load log of a real run (see [[ClassLoadLog]]); every class it names that is on the classpath counts as used
   *   - `ignoreSourcePackages`, `targetSourcePackages`, `ignoreDestinationPackages`, `targetDestinationPackages`: lists of `[package, "true" | "false"]` pairs

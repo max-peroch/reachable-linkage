@@ -7,7 +7,7 @@ import scala.jdk.OptionConverters._
 import scala.util.control.NonFatal
 
 import reachablelinkage.classpath.{ClassIndex, ClassSource}
-import reachablelinkage.linkage.{Category, CheckOptions, Checker, Finding, Label, Locator, Precision, Scope}
+import reachablelinkage.linkage.{Category, CheckOptions, Checker, Finding, Label, Locator, Precision, Routes, Scope}
 import reachablelinkage.symbols.{ClassId, Symbols}
 
 /** Java-friendly entry point; the shape sbt-missinglink and a Gradle plugin call. */
@@ -67,7 +67,13 @@ object Linkage {
     val findings = Checker.findings(
       index,
       scope,
-      CheckOptions(precisionOf(request.precision), KeepRule.toKeep(request.keepRules), loaded, request.exportedPackages.asScala.toSet)
+      CheckOptions(
+        precisionOf(request.precision),
+        KeepRule.toKeep(request.keepRules),
+        loaded,
+        request.exportedPackages.asScala.toSet,
+        if (request.routes) Routes.Wanted else Routes.Skipped
+      )
     )
     def onClasspath(name: String): Boolean = {
       val c = index.syms.findClass(name)
@@ -157,7 +163,12 @@ object Linkage {
         case Label.Probed       => ConflictLabel.PROBED
         case Label.Reflective   => ConflictLabel.REFLECTIVE
         case Label.Deserialized => ConflictLabel.DESERIALIZED
-      }
+      },
+      routeNames(f, syms, locator)
     )
   }
+
+  /** The route as `pkg.Class.method`, with the class and method of each step. */
+  private def routeNames(f: Finding, syms: Symbols, locator: Locator): java.util.List[String] =
+    f.route.map(step => dot(syms.className(step.inClass)) + "." + locator.methodNameOf(step.inClass, step.method)).asJava
 }

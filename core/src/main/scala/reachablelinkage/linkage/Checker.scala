@@ -25,8 +25,10 @@ object Checker {
     * each one is to be hit.
     */
   def findings(index: ClassIndex, scope: Scope, options: CheckOptions = CheckOptions()): Vector[Finding] = {
-    val CheckOptions(precision, keep, loaded, _) = options
-    val traversable                              = new BitSet()
+    val precision   = options.precision
+    val keep        = options.keep
+    val loaded      = options.loaded
+    val traversable = new BitSet()
     scope.traverse.foreach(traversable.set(_))
     // Classes a real run loaded are used, whatever the analysis can see: they start the walks too.
     val rules                       = KeepRules.from(index.syms, keep)
@@ -66,7 +68,7 @@ object Checker {
     }
     checkProviders(index, scope, traversable, reachable, out)
     def graphWith(dispatch: Dispatch): MethodGraph =
-      MethodGraph.build(index, resolver, rules, dispatch, scope.app.iterator.flatMap(index.classesIn).toVector, used, traversable, targets)
+      MethodGraph.build(index, resolver, rules, dispatch, scope.app.iterator.flatMap(index.classesIn).toVector, used, traversable, targets, options.routes)
     val graph = precision match {
       case Precision.Class     => None
       case Precision.Method    => Some(graphWith(Dispatch.Cha))
@@ -100,7 +102,12 @@ object Checker {
               case Reach.Deserialization => Label.Deserialized
             }
         }
-    out.iterator.map(f => f.copy(label = labelOf(f))).toVector
+    def withRoute(f: Finding): Finding = {
+      val labelled = f.copy(label = labelOf(f))
+      val fails    = labelled.label == Label.Reachable || labelled.label == Label.Reflective
+      if (options.routes == Routes.Wanted && fails) labelled.copy(route = graph.fold(Vector.empty[RouteStep])(_.route(index, labelled))) else labelled
+    }
+    out.iterator.map(withRoute).toVector
   }
 
   /** A listed provider that is not on the classpath fails the moment its service is iterated, so it counts exactly when the service would have its providers

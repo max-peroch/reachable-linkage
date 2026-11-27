@@ -19,6 +19,7 @@ final case class LinkageRequestBuilder private[api] (request: LinkageRequest) {
   def withConflictFilter(value: ConflictFilter): LinkageRequestBuilder            = set(_.copy(conflictFilter = value))
   def withJavaRelease(value: Int): LinkageRequestBuilder                          = set(_.copy(javaRelease = value))
   def withExportedPackages(value: java.util.Set[String]): LinkageRequestBuilder   = set(_.copy(exportedPackages = value))
+  def withRoutes(value: Boolean): LinkageRequestBuilder                           = set(_.copy(routes = value))
 
   def build(): LinkageRequest = request
 

@@ -24,6 +24,9 @@ import reachablelinkage.classpath.JavaRelease
   *   dotted names of classes a real run loaded (see [[ClassLoadLog]]); each one on the classpath is treated as used. Empty by default.
   * @param conflictFilter
   *   which conflicts to keep by package (sbt-missinglink's ignore and target settings); none by default
+  * @param routes
+  *   whether to give each conflict that fails the methods that lead to it from the application (`LinkageConflict.route`); off by default, as it costs a pass
+  *   over the call graph
   * @param exportedPackages
   *   dotted names of JDK packages the application's JVM exports with `--add-exports`, so naming them is not reported
   * @param javaRelease
@@ -42,7 +45,8 @@ final case class LinkageRequest(
     loadedClasses: java.util.Set[String] = java.util.Collections.emptySet[String](),
     conflictFilter: ConflictFilter = ConflictFilter.none,
     javaRelease: Int = JavaRelease.running,
-    exportedPackages: java.util.Set[String] = java.util.Collections.emptySet[String]()
+    exportedPackages: java.util.Set[String] = java.util.Collections.emptySet[String](),
+    routes: Boolean = false
 ) {
 
   /** The standard keep rules. */
